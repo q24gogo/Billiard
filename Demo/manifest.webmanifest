@@ -4,12 +4,27 @@
   "description": "Q24-가브리엘당구클럽 회원용 게임 리뷰 · 게임 코칭",
   "start_url": "./",
   "scope": "./",
-  "display": "minimal-ui",
+  "display": "standalone",
   "background_color": "#0a1018",
   "theme_color": "#0a1018",
   "lang": "ko",
   "icons": [
-    { "src": "premium-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "premium-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "premium-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "premium-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "id": "./",
+  "display_override": [
+    "minimal-ui",
+    "standalone"
   ]
 }
