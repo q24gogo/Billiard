@@ -1,7 +1,7 @@
 {
-  "name": "3Q 당구 코칭",
-  "short_name": "3Q 코칭",
-  "description": "3쿠션 경기 리플레이와 샷 코칭",
+  "name": "Q24 당구회원 프리미엄 서비스",
+  "short_name": "Q24 프리미엄",
+  "description": "Q24-가브리엘당구클럽 회원용 게임 리뷰 · 게임 코칭",
   "start_url": "./",
   "scope": "./",
   "display": "minimal-ui",
@@ -9,7 +9,7 @@
   "theme_color": "#0a1018",
   "lang": "ko",
   "icons": [
-    { "src": "coach-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "coach-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "premium-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "premium-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

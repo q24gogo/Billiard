@@ -2,71 +2,168 @@
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark"><meta name="theme-color" content="#0a1018">
-<title>3Q 당구 코칭</title>
+<title>Q24 당구회원 프리미엄 서비스</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" type="image/png" href="./coach-192.png">
-<link rel="apple-touch-icon" href="./coach-180.png">
-<meta name="apple-mobile-web-app-title" content="3Q 코칭">
+<link rel="icon" type="image/png" href="./premium-192.png">
+<link rel="apple-touch-icon" href="./premium-180.png">
+<meta name="apple-mobile-web-app-title" content="Q24 프리미엄">
 <style>
-:root{--bg:#0a1018;--panel:#111a25;--line:#22313f;--text:#e9eef5;--muted:#8ea0b2;--mint:#6ff0c2;--blue:#3b82f6}
+:root{--bg:#0a1018;--panel:#111a25;--line:#22313f;--text:#e9eef5;--muted:#9dadc3;--rev:#ffd25e;--coa:#ff9d4d}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;-webkit-text-size-adjust:100%}
-main{max-width:720px;margin:0 auto;padding:14px 14px calc(30px + env(safe-area-inset-bottom))}
-header{display:flex;align-items:center;gap:10px;padding:8px 2px 4px}
-header img{width:44px;height:44px;border-radius:11px}
-h1{font-size:21px;margin:0}.sub{color:var(--muted);font-size:13px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:12px 0}
-.g h2{font-size:16px;margin:0 0 2px}.g .meta{color:var(--muted);font-size:13px;margin-bottom:10px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-a.btn,button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:48px;border-radius:12px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;border:1px solid var(--line);color:var(--text);background:#162231}
-a.rep{background:#173a33;border-color:#2f7d68;color:var(--mint)}
-a.coa{background:#14243a;border-color:#2b4a72;color:#bfe0ff}
-.tools{display:flex;gap:8px;flex-wrap:wrap}.tools button{flex:1;min-width:140px;font-weight:700}
-#bInstall{background:var(--blue);border-color:var(--blue)}
-details{margin-top:4px}summary{cursor:pointer;font-weight:700;padding:4px 0}
-details p,details li{color:#cdd7e2;font-size:14px}details ol{padding-left:20px;margin:6px 0}
-.res{font-weight:800}.res.W{color:var(--mint)}.res.L{color:#ff8a8a}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0a1018f2;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:14px}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:640px;margin:0 auto;padding:4px 12px calc(28px + env(safe-area-inset-bottom))}
+
+/* top title (same look as the game pages) */
+.q24h{position:sticky;top:0;z-index:6;display:flex;align-items:center;gap:11px;padding:10px 12px;background:#0a1018ee;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.q24h img{width:46px;height:46px;border-radius:11px;flex:none}
+.q24h .q24tx{display:flex;flex-direction:column;min-width:0}
+.q24h .q24t{font-size:17px;font-weight:900;line-height:1.25;color:#ffd25e;text-shadow:0 0 10px #ffb00055;word-break:keep-all}
+.q24h .q24c{font-size:12.5px;color:var(--muted);font-weight:600}
+
+/* sections */
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;margin:14px 0}
+.sh{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.sh img{width:58px;height:58px;border-radius:13px;flex:none}
+.sh h2{margin:0;font-size:20px;font-weight:900;line-height:1.2}
+.sh p{margin:2px 0 0;font-size:13.5px;color:var(--muted)}
+.sh .cnt{margin-left:auto;font-size:13px;color:var(--muted);white-space:nowrap}
+.rev .sh h2{color:var(--rev)}.coa .sh h2{color:var(--coa)}
+.rev{border-color:#5a4a1e}.coa{border-color:#5a3418}
+
+ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+a.it{display:flex;align-items:center;gap:10px;padding:12px 13px;border-radius:14px;background:#0e1722;border:1.5px solid #2a3b4e;color:var(--text);text-decoration:none;min-height:64px}
+a.it:active{transform:scale(.985)}
+.rev a.it{border-color:#4a3f1f}.coa a.it{border-color:#4a2f1c}
+.it .tx{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.it b{font-size:16.5px;line-height:1.3}
+.it .m{font-size:13.5px;color:#c9d4e0}
+.it .d{font-size:12.5px;color:var(--muted)}
+.it .go{flex:none;font-weight:900;font-size:14px;padding:8px 12px;border-radius:10px;white-space:nowrap}
+.rev .go{background:#3a3214;color:var(--rev)}.coa .go{background:#3a2414;color:var(--coa)}
+.new{display:inline-block;margin-left:6px;font-size:11px;font-weight:900;color:#04140c;background:#6ff0c2;border-radius:6px;padding:0 5px;vertical-align:2px}
+.res.W{color:#6ff0c2;font-weight:800}.res.L{color:#ff8a8a;font-weight:800}.res.D{color:var(--muted);font-weight:800}
+.empty{color:var(--muted);font-size:14px;padding:6px 2px}
+
+/* tools + guide */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;margin:14px 0}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:50px;border-radius:12px;font:inherit;font-weight:800;cursor:pointer;border:1px solid var(--line);color:var(--text);background:#162231}
+#bInstall{background:#3b82f6;border-color:#3b82f6}
+.card h3{margin:0 0 10px;font-size:17px}
+.os{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.os:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.os h4{margin:0 0 6px;font-size:15.5px}
+.os ol{margin:0;padding-left:22px}.os li{margin:4px 0;font-size:15px;color:#d6dee8}
+.os li b{color:#fff}
+.k{display:inline-block;padding:0 6px;border-radius:6px;background:#22313f;color:#fff;font-weight:800}
+
+.kakao{background:#3a3214;border:1px solid #8a7426;border-radius:16px;padding:13px 14px;margin:12px 0}
+.kakao b{color:#ffe27a}.kakao p{margin:0 0 10px;font-size:15px}
+.kakao button{width:100%;background:#fee500;color:#191919;border:0}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0a1018f2;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:14px;z-index:9}
 </style></head><body>
+
+<header class="q24h"><img src="./premium-192.png" alt=""><div class="q24tx"><div class="q24t">Q24 당구회원 프리미엄 서비스</div><div class="q24c">Q24-가브리엘당구클럽</div></div></header>
+
 <main>
-<header><img src="./coach-192.png" alt=""><div><h1>3Q 당구 코칭</h1><div class="sub">경기 리플레이 · 실패 샷 코칭</div></div></header>
+<!-- 카카오톡 안에서 열었을 때만 보임 -->
+<div class="kakao" id="kakao" hidden>
+ <p><b>카카오톡 안에서는 홈 화면에 추가할 수 없어요.</b><br>아래 버튼으로 크롬(안드로이드)이나 사파리(아이폰)에서 열어 주세요.</p>
+ <button id="bExt">🌐 크롬 · 사파리로 열기</button>
+</div>
 
-<div id="games"></div>
+<!-- ① 게임 리뷰 -->
+<section class="sec rev">
+ <div class="sh"><img src="./review-192.png" alt=""><div><h2>게임 리뷰</h2><p>경기 전체를 다시 보기</p></div><span class="cnt" id="revN"></span></div>
+ <ul class="items" id="revList"></ul>
+</section>
 
+<!-- ② 게임 코칭 -->
+<section class="sec coa">
+ <div class="sh"><img src="./coach-192.png" alt=""><div><h2>게임 코칭</h2><p>실패 샷의 원인 · 교정 · 추천</p></div><span class="cnt" id="coaN"></span></div>
+ <ul class="items" id="coaList"></ul>
+</section>
+
+<!-- 바로가기 -->
 <div class="card">
  <div class="tools">
-  <button id="bInstall" hidden>📲 홈 화면에 추가</button>
+  <button id="bInstall">📲 홈 화면에 추가</button>
   <button id="bShare">🔗 링크 보내기</button>
  </div>
- <details id="howto"><summary>📌 다음에 또 보려면 (홈 화면에 추가)</summary>
-  <p><b>아이폰 (사파리)</b></p>
-  <ol><li>아래쪽 <b>공유 버튼(□↑)</b>을 누르세요</li><li><b>"홈 화면에 추가"</b> → <b>추가</b></li></ol>
-  <p><b>안드로이드 (크롬)</b></p>
-  <ol><li>오른쪽 위 <b>⋮ 메뉴</b>를 누르세요</li><li><b>"홈 화면에 추가"</b> 또는 <b>"앱 설치"</b></li></ol>
-  <p>카톡에서 열었다면 먼저 오른쪽 위 메뉴에서 <b>"다른 브라우저로 열기"</b>(사파리·크롬)를 누른 뒤 추가하세요.</p>
- </details>
+</div>
+
+<div class="card" id="howto">
+ <h3>📌 다음에 또 보려면 (홈 화면에 추가)</h3>
+ <div class="os">
+  <h4>🤖 안드로이드 폰</h4>
+  <ol>
+   <li>카톡에서 링크를 눌러 연 뒤, 오른쪽 위 <span class="k">⋮</span> 를 누르고 <b>"다른 브라우저로 열기"</b> → <b>크롬(Chrome)</b>을 고르세요.</li>
+   <li>크롬 오른쪽 위 <span class="k">⋮</span> → <b>"홈 화면에 추가"</b> (또는 <b>"앱 설치"</b>) → <b>추가</b>.</li>
+   <li>홈 화면에 생긴 <b>Q24 프리미엄</b> 아이콘으로 언제든 다시 열 수 있어요.</li>
+  </ol>
+ </div>
+ <div class="os">
+  <h4>🍎 아이폰</h4>
+  <ol>
+   <li>카톡에서 링크를 눌러 연 뒤, 오른쪽 아래 <span class="k">⋯</span> 또는 <span class="k">공유</span> 버튼을 누르고 <b>"Safari로 열기"</b>를 고르세요.</li>
+   <li>사파리 아래쪽 <span class="k">공유 □↑</span> → <b>"홈 화면에 추가"</b> → 오른쪽 위 <b>추가</b>.</li>
+   <li>홈 화면에 생긴 <b>Q24 프리미엄</b> 아이콘으로 언제든 다시 열 수 있어요.</li>
+  </ol>
+ </div>
 </div>
 </main>
-<script>
-/* ===== 경기 목록: 새 경기를 올리면 여기에 한 줄 추가 (위가 최신) ===== */
-const GAMES=[
- {key:'4417',date:'2026-11-24 21:45',venue:'구름당구클럽',me:'달빛사냥',opp:'구름달',score:'5 : 26',inn:30,res:'L',replay:'4417-replay.html',coach:'4417-coach.html'},
-];
-const RES={W:'승',L:'패',D:'무'},esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-document.getElementById('games').innerHTML=GAMES.map(g=>`<div class="card g">
- <h2>${esc(g.me)} : <span style="color:#8ea0b2">${esc(g.opp)}</span></h2>
- <div class="meta">${esc(g.date)} · ${esc(g.venue)} · ${esc(g.score)} (${g.inn}이닝) <span class="res ${g.res}">${RES[g.res]||''}</span></div>
- <div class="row">${g.replay?`<a class="btn rep" href="./${g.replay}">▶ 경기 리플레이</a>`:''}${g.coach?`<a class="btn coa" href="./${g.coach}">🎯 샷 코칭</a>`:''}</div></div>`).join('');
 
+<script>
+/* =====================================================================
+   새 경기를 올리면 아래 목록에 한 줄씩 추가하세요. (날짜 순서는 자동 정렬)
+   - REVIEWS : 게임 리뷰 파일   (예: 4501-replay.html)
+   - COACHES : 게임 코칭 파일   (예: 4501-coach.html)
+   ===================================================================== */
+const REVIEWS=[
+ {file:'4417-replay.html', date:'2026-11-24 21:45', p1:'구름달', s1:26, p2:'달빛사냥', s2:5},
+];
+const COACHES=[
+ {file:'4417-coach.html', date:'2026-11-24 21:45', player:'달빛사냥', opp:'구름달', score:'5 : 26', res:'L', shots:28},
+];
+
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const RES={W:'승',L:'패',D:'무'};
+const byDate=(a,b)=>String(b.date).localeCompare(String(a.date));
+const isNew=d=>{const t=new Date(String(d).replace(' ','T'));return !isNaN(t)&&(Date.now()-t)<7*864e5;};
+const fmtD=d=>{const t=new Date(String(d).replace(' ','T'));if(isNaN(t))return esc(d);const w='일월화수목금토'[t.getDay()];return `${t.getFullYear()}.${t.getMonth()+1}.${t.getDate()}(${w}) ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;};
+
+const rv=[...REVIEWS].sort(byDate);
+document.getElementById('revN').textContent=rv.length?`${rv.length}경기`:'';
+document.getElementById('revList').innerHTML=rv.map(g=>`<li><a class="it" href="./${esc(g.file)}"><div class="tx">
+ <b>${esc(g.p1)} <span style="color:#9dadc3">${g.s1} : ${g.s2}</span> ${esc(g.p2)}${isNew(g.date)?'<span class="new">NEW</span>':''}</b>
+ <span class="d">${fmtD(g.date)}</span></div><span class="go">▶ 보기</span></a></li>`).join('')||'<li class="empty">아직 올라온 경기가 없어요.</li>';
+
+const co=[...COACHES].sort(byDate);
+document.getElementById('coaN').textContent=co.length?`${co.length}건`:'';
+document.getElementById('coaList').innerHTML=co.map(g=>`<li><a class="it" href="./${esc(g.file)}"><div class="tx">
+ <b>${esc(g.player)}${isNew(g.date)?'<span class="new">NEW</span>':''}</b>
+ <span class="m">vs ${esc(g.opp)} · ${esc(g.score)} <span class="res ${g.res}">${RES[g.res]||''}</span>${g.shots?` · 실패 샷 ${g.shots}개`:''}</span>
+ <span class="d">${fmtD(g.date)}</span></div><span class="go">▶ 코칭</span></a></li>`).join('')||'<li class="empty">아직 올라온 코칭이 없어요.</li>';
+
+/* 링크 보내기 */
 const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2200);};
-document.getElementById('bShare').onclick=async()=>{const url=location.href.split('#')[0].replace(/index\.html$/,'');
- try{if(navigator.share){await navigator.share({title:'3Q 당구 코칭',url});return;}await navigator.clipboard.writeText(url);toast('링크를 복사했어요');}catch(e){}};
-// 안드로이드 크롬: 설치 버튼 / 아이폰: 안내 펼치기
-let ask=null;const bI=document.getElementById('bInstall');
-addEventListener('beforeinstallprompt',e=>{e.preventDefault();ask=e;bI.hidden=false;});
-bI.onclick=async()=>{if(!ask)return;ask.prompt();await ask.userChoice;ask=null;bI.hidden=true;};
-const standalone=matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: minimal-ui)').matches||navigator.standalone;
-if(!standalone&&/iphone|ipad|ipod/i.test(navigator.userAgent))document.getElementById('howto').open=true;
+const homeURL=()=>location.href.split('#')[0].split('?')[0].replace(/index\.html$/,'');
+document.getElementById('bShare').onclick=async()=>{const url=homeURL();
+ try{if(navigator.share){await navigator.share({title:'Q24 당구회원 프리미엄 서비스',url});return;}await navigator.clipboard.writeText(url);toast('링크를 복사했어요');}catch(e){}};
+
+/* 홈 화면에 추가: 안드로이드 크롬은 바로 설치 창, 그 밖에는 방법 안내로 이동 */
+let ask=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();ask=e;});
+document.getElementById('bInstall').onclick=async()=>{
+ if(ask){ask.prompt();await ask.userChoice;ask=null;return;}
+ document.getElementById('howto').scrollIntoView({behavior:'smooth',block:'start'});};
+if(matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: minimal-ui)').matches||navigator.standalone)document.getElementById('bInstall').hidden=true;
+
+/* 카카오톡 인앱 브라우저: 외부 브라우저로 열기 */
+if(/KAKAOTALK/i.test(navigator.userAgent)){
+ document.getElementById('kakao').hidden=false;
+ document.getElementById('bExt').onclick=()=>{location.href='kakaotalk://web/openExternal?url='+encodeURIComponent(homeURL());};
+}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 </script>
 </body></html>

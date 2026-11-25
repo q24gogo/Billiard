@@ -1,31 +1,40 @@
-# 3Q 당구 코칭
+# Q24 당구회원 프리미엄 서비스 (Demo)
 
-폰에서 바로 보는 3쿠션 경기 리플레이와 샷 코칭 페이지입니다.
+Q24-가브리엘당구클럽 회원용 게임 리뷰 · 게임 코칭 페이지입니다.
 
-- 목록: https://q24gogo.github.io/Billiard/
-- 게임리뷰(4417): https://q24gogo.github.io/Billiard/4417-replay.html
-- 게임코칭(4417): https://q24gogo.github.io/Billiard/4417-coach.html
+- 첫 화면: https://q24gogo.github.io/Billiard/Demo/
+- 게임 리뷰(4417): https://q24gogo.github.io/Billiard/Demo/4417-replay.html
+- 게임 코칭(4417): https://q24gogo.github.io/Billiard/Demo/4417-coach.html
 
-## 처음 한 번: GitHub Pages 켜기
-1. 이 폴더의 파일을 저장소 맨 위(루트)에 올립니다. `.nojekyll`도 함께 올리세요.
-2. 저장소에서 **Settings → Pages**로 갑니다.
-3. **Source: Deploy from a branch**, **Branch: main / (root)** → Save.
-4. 1~2분 뒤 위 주소가 열립니다.
+## 올리는 위치
+저장소 `q24gogo/Billiard` 맨 위에 이 `Demo` 폴더를 통째로 올립니다.
+(처음 한 번: Settings → Pages → Branch `main` / `(root)` → Save)
 
-## 새 경기 추가
-1. `4501-replay.html`, `4501-coach.html`처럼 **경기번호-종류.html** 이름으로 올립니다.
-2. 두 파일의 `</head>` 바로 앞에 아래 줄을 넣으면 홈 화면 아이콘과 오프라인 보기가 됩니다.
-   - 리뷰: `<link rel="icon" type="image/png" href="./review-192.png"><link rel="apple-touch-icon" href="./review-180.png"><meta name="apple-mobile-web-app-title" content="게임리뷰">`
-   - 코칭: `<link rel="icon" type="image/png" href="./coach-192.png"><link rel="apple-touch-icon" href="./coach-180.png"><meta name="apple-mobile-web-app-title" content="게임코칭">`
-   - 공통: `<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script>`
-3. `index.html` 안의 `GAMES` 목록 맨 위에 한 줄을 추가합니다.
+## 새 경기 올리기
+1. 파일 이름을 **경기번호-종류.html**로 맞춰 `Demo` 폴더에 올립니다.
+   예) `4501-replay.html`(게임 리뷰), `4501-coach.html`(게임 코칭)
+2. 새 파일의 `</head>` 바로 앞에 4417 파일과 같은 줄(아이콘 · 상단 타이틀 스타일 · sw.js 등록)을 넣고,
+   `<body>` 바로 뒤에 4417 파일의 `<header class="q24h …">…</header>` 한 줄을 그대로 복사해 넣습니다.
+3. `index.html` 안의 목록에 한 줄씩 추가합니다. 날짜 순서는 자동으로 정렬됩니다.
+
+```js
+const REVIEWS=[
+ {file:'4501-replay.html', date:'2026-12-01 20:30', p1:'선수A', s1:26, p2:'선수B', s2:18},
+ {file:'4417-replay.html', date:'2026-11-24 21:45', p1:'구름달', s1:26, p2:'달빛사냥', s2:5},
+];
+const COACHES=[
+ {file:'4501-coach.html', date:'2026-12-01 20:30', player:'선수B', opp:'선수A', score:'18 : 26', res:'L', shots:20},
+ {file:'4417-coach.html', date:'2026-11-24 21:45', player:'달빛사냥', opp:'구름달', score:'5 : 26', res:'L', shots:28},
+];
+```
+`res`는 승 `W`, 패 `L`, 무 `D`. 올린 지 7일 안의 항목에는 **NEW** 표시가 붙습니다.
 
 ## 파일
 | 파일 | 역할 |
 |---|---|
-| index.html | 경기 목록, 링크 보내기, 홈 화면 추가 안내 |
-| 4417-replay.html / 4417-coach.html | 경기 페이지 |
-| coach-*.png / review-*.png | 홈 화면 아이콘 |
-| manifest.webmanifest | 목록 페이지를 앱처럼 설치 |
+| index.html | 첫 화면 (게임 리뷰 목록 · 게임 코칭 목록 · 홈 화면 추가 안내) |
+| 4417-replay.html / 4417-coach.html | 경기 페이지 (위쪽 "◀ 이전"으로 첫 화면 복귀) |
+| premium-*.png | 첫 화면 · 홈 화면 설치 아이콘 |
+| review-*.png / coach-*.png | 게임 리뷰 · 게임 코칭 아이콘 |
+| manifest.webmanifest | 홈 화면 설치 정보 |
 | sw.js | 한 번 본 페이지를 인터넷이 약할 때도 열리게 저장 |
-| .nojekyll | GitHub Pages가 파일을 그대로 올리게 함 |
