@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark"><meta name="theme-color" content="#0a1018">
+<title>3Q 당구 코칭</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" href="./coach-192.png">
+<link rel="apple-touch-icon" href="./coach-180.png">
+<meta name="apple-mobile-web-app-title" content="3Q 코칭">
+<style>
+:root{--bg:#0a1018;--panel:#111a25;--line:#22313f;--text:#e9eef5;--muted:#8ea0b2;--mint:#6ff0c2;--blue:#3b82f6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:720px;margin:0 auto;padding:14px 14px calc(30px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:10px;padding:8px 2px 4px}
+header img{width:44px;height:44px;border-radius:11px}
+h1{font-size:21px;margin:0}.sub{color:var(--muted);font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:12px 0}
+.g h2{font-size:16px;margin:0 0 2px}.g .meta{color:var(--muted);font-size:13px;margin-bottom:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+a.btn,button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:48px;border-radius:12px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;border:1px solid var(--line);color:var(--text);background:#162231}
+a.rep{background:#173a33;border-color:#2f7d68;color:var(--mint)}
+a.coa{background:#14243a;border-color:#2b4a72;color:#bfe0ff}
+.tools{display:flex;gap:8px;flex-wrap:wrap}.tools button{flex:1;min-width:140px;font-weight:700}
+#bInstall{background:var(--blue);border-color:var(--blue)}
+details{margin-top:4px}summary{cursor:pointer;font-weight:700;padding:4px 0}
+details p,details li{color:#cdd7e2;font-size:14px}details ol{padding-left:20px;margin:6px 0}
+.res{font-weight:800}.res.W{color:var(--mint)}.res.L{color:#ff8a8a}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0a1018f2;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:14px}
+</style></head><body>
+<main>
+<header><img src="./coach-192.png" alt=""><div><h1>3Q 당구 코칭</h1><div class="sub">경기 리플레이 · 실패 샷 코칭</div></div></header>
+
+<div id="games"></div>
+
+<div class="card">
+ <div class="tools">
+  <button id="bInstall" hidden>📲 홈 화면에 추가</button>
+  <button id="bShare">🔗 링크 보내기</button>
+ </div>
+ <details id="howto"><summary>📌 다음에 또 보려면 (홈 화면에 추가)</summary>
+  <p><b>아이폰 (사파리)</b></p>
+  <ol><li>아래쪽 <b>공유 버튼(□↑)</b>을 누르세요</li><li><b>"홈 화면에 추가"</b> → <b>추가</b></li></ol>
+  <p><b>안드로이드 (크롬)</b></p>
+  <ol><li>오른쪽 위 <b>⋮ 메뉴</b>를 누르세요</li><li><b>"홈 화면에 추가"</b> 또는 <b>"앱 설치"</b></li></ol>
+  <p>카톡에서 열었다면 먼저 오른쪽 위 메뉴에서 <b>"다른 브라우저로 열기"</b>(사파리·크롬)를 누른 뒤 추가하세요.</p>
+ </details>
+</div>
+</main>
+<script>
+/* ===== 경기 목록: 새 경기를 올리면 여기에 한 줄 추가 (위가 최신) ===== */
+const GAMES=[
+ {key:'4417',date:'2026-11-24 21:45',venue:'구름당구클럽',me:'달빛사냥',opp:'구름달',score:'5 : 26',inn:30,res:'L',replay:'4417-replay.html',coach:'4417-coach.html'},
+];
+const RES={W:'승',L:'패',D:'무'},esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+document.getElementById('games').innerHTML=GAMES.map(g=>`<div class="card g">
+ <h2>${esc(g.me)} : <span style="color:#8ea0b2">${esc(g.opp)}</span></h2>
+ <div class="meta">${esc(g.date)} · ${esc(g.venue)} · ${esc(g.score)} (${g.inn}이닝) <span class="res ${g.res}">${RES[g.res]||''}</span></div>
+ <div class="row">${g.replay?`<a class="btn rep" href="./${g.replay}">▶ 경기 리플레이</a>`:''}${g.coach?`<a class="btn coa" href="./${g.coach}">🎯 샷 코칭</a>`:''}</div></div>`).join('');
+
+const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2200);};
+document.getElementById('bShare').onclick=async()=>{const url=location.href.split('#')[0].replace(/index\.html$/,'');
+ try{if(navigator.share){await navigator.share({title:'3Q 당구 코칭',url});return;}await navigator.clipboard.writeText(url);toast('링크를 복사했어요');}catch(e){}};
+// 안드로이드 크롬: 설치 버튼 / 아이폰: 안내 펼치기
+let ask=null;const bI=document.getElementById('bInstall');
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();ask=e;bI.hidden=false;});
+bI.onclick=async()=>{if(!ask)return;ask.prompt();await ask.userChoice;ask=null;bI.hidden=true;};
+const standalone=matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: minimal-ui)').matches||navigator.standalone;
+if(!standalone&&/iphone|ipad|ipod/i.test(navigator.userAgent))document.getElementById('howto').open=true;
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body></html>
