@@ -306,24 +306,24 @@ function sbDraw(st){const Q=window.Q24L,sb=Q&&Q.on&&Q.sb;if(!sb){if(BAND>0)score
 function scoreboard(st){
  const s=st&&st.s,S=st?(st.phase==='post'?s.A:s.B):{sc:[0,0],inn:[0,0],hr:[0,0],run:0,i:0},turn=s?s.pl:-1,end=st&&st.k===segs.length-1&&st.phase==='post'&&segs[segs.length-1].i===SH.length-1&&$('flt').value==='all';
  const g=ctx.createLinearGradient(0,0,0,BAND);g.addColorStop(0,'#10161d');g.addColorStop(1,'#05080c');ctx.fillStyle=g;ctx.fillRect(0,0,W,BAND);
- const pad=6*DPR,cw=Math.min(W*.2,130*DPR),pw=(W-cw)/2-pad*1.5,ph=BAND-pad*2;
+ const pad=6*DPR,cw=Math.min(W*.2,130*DPR),pw=(W-cw)/2-pad*1.5,ph=BAND-pad*2,bt=Math.max(1.5*DPR,pad*.3),bh=ph+pad-bt;
  for(const pl of [0,1]){
   const x0=pl===0?pad:W-pad-pw,on=turn===pl&&!end,b=ballOf(pl),fg=b===1?'#ffd23f':'#f4f7ef';
-  rrect(ctx,x0,pad,pw,ph,8*DPR);ctx.fillStyle=on?'#0e1f1a':'#0b1016';ctx.fill();ctx.lineWidth=(on?2:1)*DPR;ctx.strokeStyle=on?'#5fe3b4':'#25313e';ctx.stroke();
+  rrect(ctx,x0,bt,pw,bh,8*DPR);ctx.fillStyle=on?'#0e1f1a':'#0b1016';ctx.fill();ctx.lineWidth=(on?2:1)*DPR;ctx.strokeStyle=on?'#5fe3b4':'#25313e';ctx.stroke();
   // ball-colour strip on the outer edge
-  ctx.save();rrect(ctx,x0,pad,pw,ph,8*DPR);ctx.clip();ctx.fillStyle=BALL[b];ctx.fillRect(pl===0?x0:x0+pw-5*DPR,pad,5*DPR,ph);ctx.restore();
+  ctx.save();rrect(ctx,x0,bt,pw,bh,8*DPR);ctx.clip();ctx.fillStyle=BALL[b];ctx.fillRect(pl===0?x0:x0+pw-5*DPR,bt,5*DPR,bh);ctx.restore();
   const compact=pw<250*DPR,nfs=Math.max(11*DPR,Math.min(ph*.19,15*DPR)),fg2=on?'#fff':'#c9d4e0',sub=(PL[pl].hc?'핸디 '+PL[pl].hc:'')+(on?(PL[pl].hc?' · ':'')+'▶ 차례':'');
   const stat=`HR ${S.hr[pl]} · AVG ${S.inn[pl]?(S.sc[pl]/S.inn[pl]).toFixed(3):'0.000'}`;
   const fit=(txt,maxW)=>{let s=txt;while(ctx.measureText(s).width>maxW&&s.length>2)s=s.slice(0,-2)+'…';return s;};
   if(compact){ // phone: name on top, big score in the middle, stats below
    const mx=x0+pw/2+(pl===0?2:-2)*DPR,big=Math.min(ph*.46,pw*.42);
-   ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${nfs}px system-ui`;ctx.fillStyle=fg2;ctx.fillText(fit(PL[pl].name,pw-16*DPR),mx,pad+ph*.15);
+   ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${nfs}px system-ui`;ctx.fillStyle=fg2;ctx.fillText(fit(PL[pl].name,pw-16*DPR),mx,pad+ph*.18);
    led(String(S.sc[pl]),mx,pad+ph*.5,big,fg);
    ctx.font=`700 ${nfs*.72}px system-ui`;ctx.fillStyle=on&&S.run>0?'#5fe3b4':'#8193a8';ctx.fillText(fit(on&&S.run>0?`연속 ${S.run}점 · ${stat}`:sub?sub+' · HR '+S.hr[pl]:stat,pw-10*DPR),mx,pad+ph*.85);
    if(PL[pl].hc){const k=clamp(S.sc[pl]/PL[pl].hc,0,1),bw=pw*.6;ctx.fillStyle='#1b2630';ctx.fillRect(mx-bw/2,pad+ph*.7,bw,2*DPR);ctx.fillStyle=fg;ctx.fillRect(mx-bw/2,pad+ph*.7,bw*k,2*DPR);}
    continue;}
   const inner=pl===0?x0+14*DPR:x0+pw-14*DPR,al=pl===0?'left':'right',big=Math.min(ph*.62,pw*.3),boxW=big*1.64,textW=pw-boxW-34*DPR;
-  ctx.font=`800 ${nfs}px system-ui`;ctx.textAlign=al;ctx.textBaseline='middle';ctx.fillStyle=fg2;ctx.fillText(fit(PL[pl].name,textW),inner,pad+ph*.2);
+  ctx.font=`800 ${nfs}px system-ui`;ctx.textAlign=al;ctx.textBaseline='middle';ctx.fillStyle=fg2;ctx.fillText(fit(PL[pl].name,textW),inner,pad+ph*.22);
   ctx.font=`700 ${nfs*.78}px system-ui`;ctx.fillStyle='#8193a8';if(sub)ctx.fillText(fit(sub,textW),inner,pad+ph*.44);
   ctx.fillText(fit(stat,textW),inner,pad+ph*(sub?.67:.46));
   if(on&&S.run>0){ctx.fillStyle='#5fe3b4';ctx.font=`800 ${nfs*.78}px system-ui`;ctx.fillText(`연속 ${S.run}점`,inner,pad+ph*.88);}
@@ -331,7 +331,7 @@ function scoreboard(st){
   led(String(S.sc[pl]),sx,pad+ph*.52,big,fg);
   if(PL[pl].hc){const k=clamp(S.sc[pl]/PL[pl].hc,0,1);ctx.fillStyle='#1b2630';ctx.fillRect(sx-big*.7,pad+ph*.86,big*1.4,2.5*DPR);ctx.fillStyle=fg;ctx.fillRect(sx-big*.7,pad+ph*.86,big*1.4*k,2.5*DPR);}
  }
- const cx=W/2;rrect(ctx,cx-cw/2+2*DPR,pad,cw-4*DPR,ph,8*DPR);ctx.fillStyle='#0b1016';ctx.fill();ctx.strokeStyle='#25313e';ctx.lineWidth=1*DPR;ctx.stroke();
+ const cx=W/2;rrect(ctx,cx-cw/2+2*DPR,bt,cw-4*DPR,bh,8*DPR);ctx.fillStyle='#0b1016';ctx.fill();ctx.strokeStyle='#25313e';ctx.lineWidth=1*DPR;ctx.stroke();
  ctx.fillStyle='#8193a8';ctx.font=`800 ${Math.max(9*DPR,ph*.14)}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(end?'경기 종료':'INNING',cx,pad+ph*.2);
  led(s?String(S.i):'0',cx,pad+ph*.56,Math.min(ph*.36,cw*.3),'#ff6b3d');
  ctx.fillStyle='#5c6e82';ctx.font=`700 ${Math.max(8*DPR,ph*.12)}px system-ui`;ctx.fillText(`/ ${INNS}`,cx,pad+ph*.88);
@@ -504,7 +504,7 @@ body.q24-land #q24land{display:flex;position:fixed;inset:0;z-index:50;gap:8px;ba
 /* review */
 #q24S .bar{position:static;padding:0;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}#q24S .seekbox{margin:0 2px 6px}
 #q24S .row.main{flex-wrap:wrap;gap:8px}#q24S .row.main>.row{flex:1 1 100%}#q24S .row.main>.row:last-child{justify-content:space-between}
-.q24sb{display:block;width:100%;height:64px;border-radius:10px;background:#05080c}
+.q24sb{display:block;width:100%;height:74px;border-radius:10px;background:#05080c}
 .q24ext{width:100%;min-height:36px;border-radius:10px;background:#3a3214;border:1px solid #8a7426;color:#ffe27a;font-weight:800;font-size:13px;cursor:pointer}
 #q24S .ph{margin-bottom:4px}#q24S .ph h2{font-size:13.5px}#q24S .kv{font-size:12px;gap:1px 10px}#q24S #sCoords,#q24S #sStory{display:none}
 /* player coaching */
