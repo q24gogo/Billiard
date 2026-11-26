@@ -1176,11 +1176,11 @@ function size(){
  if(el)el.style.width=w+'px';L.style.width=full?'':w+'px';L.style.height=full?h+'px':(h-top)+'px';
 }
 function fire(){selfFire=true;try{window.dispatchEvent(new Event('resize'));}catch(e){}selfFire=false;}
-// browser bars (address bar, in-app title bar) are hidden while the phone is sideways, where the browser allows it
+// browser bars are hidden only in the full view; the standard view keeps them and never resizes on a tap
 function fsEl(){return document.fullscreenElement||document.webkitFullscreenElement;}
 function fsReq(){var d=document.documentElement,f=d.requestFullscreen||d.webkitRequestFullscreen;if(!f||fsEl())return;try{var p=f.call(d,{navigationUI:'hide'});fsMine=true;if(p&&p.catch)p.catch(function(){fsMine=false;});}catch(e){fsMine=false;}}
 function fsExit(){var x=document.exitFullscreen||document.webkitExitFullscreen;if(fsMine&&x&&fsEl()){try{var p=x.call(document);if(p&&p.catch)p.catch(function(){});}catch(e){}}fsMine=false;}
-function dropFull(fromPop){if(!full)return;full=false;clearInterval(syncT);if(!fromPop&&history.state&&history.state.q24full)history.back();}
+function dropFull(fromPop){if(!full)return;full=false;clearInterval(syncT);fsExit();if(!fromPop&&history.state&&history.state.q24full)history.back();}
 function apply(){
  var w=want();
  if(w&&!on){on=true;build();document.body.classList.add('q24-land');}
@@ -1198,7 +1198,6 @@ function exitFull(){dropFull(false);apply();}
 O.querySelector('.bk').onclick=function(){exitFull();};
 O.querySelectorAll('.rt button').forEach(function(b){b.onclick=function(){press(b.dataset.a);wake();};});
 root.addEventListener('pointerdown',function(){wasDim=O.classList.contains('dim');wake();},true);
-root.addEventListener('click',function(){if(on&&!fsDeclined)fsReq();},true);
 // in full view a tap on the table first brings the buttons back; a second tap pauses / resumes
 L.addEventListener('click',function(e){if(!full)return;if(e.target.closest&&e.target.closest('.tipover'))return;e.stopPropagation();e.preventDefault();if(!wasDim)press('play');wake();},true);
 if(COACH){var sx=0,sy=0;L.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
