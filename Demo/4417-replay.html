@@ -197,10 +197,10 @@ let DPR=1,W=0,H=0,BAND=0,M=1,MG=.42,VW=0,VH=0,TX=0,TY=0,VERT=false,tableCache=nu
 function layout(){
  DPR=Math.min(2,devicePixelRatio||1);const w=cv.parentElement.clientWidth;
  VERT=false;
- const band=VERT?(w<380?96:104):(w<560?78:92),cap=w<560?30:34,availH=Math.max(320,innerHeight-(VERT?150:170))-cap; // cap: shot title strip right above the table
+ const QL=window.Q24L&&window.Q24L.on?window.Q24L:null,band=QL?QL.band:VERT?(w<380?96:104):(w<560?78:92),cap=QL?QL.cap:w<560?30:34,availH=QL?QL.h-cap:Math.max(320,innerHeight-(VERT?150:170))-cap; // cap: shot title strip right above the table
  MG=.22;
  const lw=TW+2*MG,lh=TH+2*MG; // landscape metres
- let m=VERT?Math.min(w/lh,(availH-band)/lw):Math.min(w/lw,Math.max(260,availH-band)/lh);
+ let m=VERT?Math.min(w/lh,(availH-band)/lw):QL?Math.min(w/lw,(availH-band)/lh):Math.min(w/lw,Math.max(260,availH-band)/lh);
  const tw=VERT?lh*m:lw*m,th=VERT?lw*m:lh*m;
  cv.style.height=Math.round(th+band+cap)+'px';W=cv.width=Math.round(w*DPR);H=cv.height=Math.round((th+band+cap)*DPR);
  BAND=band*DPR;M=m*DPR;VW=Math.round(lw*M);VH=Math.round(lh*M);TX=Math.round((W-tw*DPR)/2);TY=BAND+Math.round(cap*DPR);tableCache=null;draw();
@@ -474,6 +474,114 @@ $('recBtn').onclick=()=>{
 {const n=SH.filter(s=>s.kz).length,o=$('flt').querySelector('option[value=kiss]'),a=SH.filter(s=>s.kz&&s.sc).length;o.textContent=`키스 샷(${n})`;o.title=`행운 득점 ${a} · 쫑 실패 ${n-a}`;if(!n)o.disabled=true;}
 {const n=Object.keys(HR5).length,o=$('flt').querySelector('option[value=hr]');if(!n){o.disabled=true;o.textContent='하이런 (5점 이상) · 없음';}else o.textContent=`하이런 (5점 이상) · ${n}회`;}document.title='Q24 게임 리뷰';
 renderSwatches();build(0);new ResizeObserver(()=>layout()).observe(cv.parentElement);layout();
+})();
+</script>
+<style id="q24land-css">
+/* Q24 가로보기 (휴대폰 가로): 왼쪽 테이블 크게 + 오른쪽 필수 컨트롤, '전체 영상' = 테이블만 꽉 차게 */
+#q24land{display:none}
+body.q24-land{overflow:hidden}
+body.q24-land>header,body.q24-land>main,body.q24-land>.wrap{display:none!important}
+body.q24-land #q24land{display:flex;position:fixed;inset:0;z-index:50;gap:8px;background:#05080c;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#q24L{flex:none;display:flex;align-items:center;justify-content:center;min-width:0}
+#q24L>*{margin:0!important;flex:none}
+#q24S{flex:1;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:6px 6px 12px 0;display:flex;flex-direction:column;gap:8px}
+#q24S>*{margin:0!important}
+.q24fullb{width:100%;min-height:44px;border-radius:12px;background:#1d2f47;border:1.5px solid #3d6ea6;color:#e6f1ff;font-weight:800;font-size:15px;cursor:pointer}
+.q24hd{display:flex;align-items:center;gap:8px;min-width:0}.q24hd>.top{flex:1;min-width:0;margin:0}
+.q24bk{flex:none;min-height:40px;padding:4px 12px;border-radius:10px;border:1px solid #2b4a72;background:#14243a;color:#dbe8ff;font-weight:800;font-size:14px;cursor:pointer}
+/* coach side */
+#q24S .bar1{margin:0}#q24S .tags{flex-wrap:wrap}#q24S .ctrl{margin:0}#q24S .ctrl .row2{display:none}
+#q24S .plays{grid-template-columns:1fr;gap:6px}#q24S .plays button{min-height:38px}#q24S button{white-space:nowrap}#q24S .row4{grid-template-columns:1fr auto 1fr}#q24S #bAuto{grid-column:1/-1}#q24S .card.say{padding:10px 12px}#q24S #sSay p{font-size:14px;line-height:1.5}
+/* replay side */
+#q24S .top h1{font-size:14px}#q24S .bar{position:static;padding:2px 0;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+#q24S #recBtn{display:none}
+/* player coaching side */
+#q24S .ctrl #prev{grid-area:1/1/2/4}#q24S .ctrl #next{grid-area:1/4/2/7}#q24S .ctrl #mAct{grid-area:2/1/3/3}#q24S .ctrl #mFix{grid-area:2/3/3/5}#q24S .ctrl #mRec{grid-area:2/5/3/7}
+body.q24-pc #q24S .ctrl{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}body.q24-pc #q24S .ctrl button{padding:6px 4px}
+#q24S #auto{flex:1 1 100%}#q24S .tipbox{gap:10px}#q24S #tipCv{width:80px;height:80px}#q24S .row.main{flex-wrap:wrap}#q24S .row.main>.row{flex:1 1 100%}#q24S .row.main>.row:last-child{justify-content:space-between}#q24S .panel{padding:10px}
+/* full */
+body.q24-full #q24S{display:none}
+body.q24-full #q24L{flex:1}
+body.q24-full #q24L>*{border:0!important;border-radius:0!important}
+#q24O{display:none;transition:opacity .4s}
+body.q24-full #q24O{display:block;position:fixed;inset:0;pointer-events:none}body.q24-full #q24O>*{pointer-events:auto}
+#q24O.dim{opacity:.2}
+#q24O button{background:#0a1018b8;border:1px solid #ffffff38;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#q24O .bk{position:fixed;left:calc(env(safe-area-inset-left) + 8px);top:50%;transform:translateY(-50%);width:54px;height:54px;min-height:0;border-radius:50%;font-size:24px;font-weight:900;padding:0;z-index:52}
+#q24O .rt{position:fixed;right:calc(env(safe-area-inset-right) + 8px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;z-index:52}
+#q24O .rt button{width:50px;height:46px;min-height:0;border-radius:12px;font-size:18px;padding:0}
+#q24O .ps{font-size:11.5px;color:#d5dfea;background:#0a1018b8;border-radius:8px;padding:2px 6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+</style>
+<script id="q24land-js">
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var COACH=!!$('scShot'),PCOACH=!COACH&&!!$('mAct')&&!!$('auto'),REPLAY=!COACH&&!PCOACH&&!!$('stage')&&!!$('play');
+if(!COACH&&!REPLAY&&!PCOACH)return;
+if(PCOACH)document.body.classList.add('q24-pc');
+var FORCE=/[?&]land=1/.test(location.search);
+var mq=window.matchMedia?matchMedia('(orientation: landscape) and (max-height: 560px) and (pointer: coarse)'):{matches:false};
+var root=document.createElement('div');root.id='q24land';
+root.innerHTML='<div id="q24L"></div><aside id="q24S"></aside><div id="q24O"><button class="bk" type="button" aria-label="이전 화면">&#9664;</button><div class="rt"><button type="button" data-a="prev" aria-label="이전 샷">&#9198;</button><button type="button" data-a="play" aria-label="재생/정지">&#9654;</button><button type="button" data-a="next" aria-label="다음 샷">&#9197;</button><span class="ps"></span></div></div>';
+document.body.appendChild(root);
+var L=$('q24L'),S=$('q24S'),O=$('q24O');
+var on=false,full=false,moved=[],selfFire=false,fsOn=false,dimT=0,syncT=0,wasDim=false;
+var stageEl=function(){return COACH?$('scShot').querySelector('.stagebox')||document.querySelector('.stagebox'):PCOACH?document.querySelector('.stage'):$('stage');};
+var SRC=COACH?{prev:'bPrev',play:'bAuto',next:'bNext',pos:'sPos'}:PCOACH?{prev:'prev',play:'auto',next:'next',pos:'sTitle'}:{prev:'prev',play:'play',next:'next',pos:'time'};
+var fullB=document.createElement('button');fullB.type='button';fullB.className='q24fullb';fullB.textContent='⛶ 전체 영상';fullB.onclick=function(){enterFull();};
+var hd=document.createElement('div');hd.className='q24hd';
+var bk=document.createElement('button');bk.type='button';bk.className='q24bk';bk.textContent='◀ 이전';
+bk.onclick=function(){var a=document.querySelector('a.q24back');if(a&&a.getAttribute('href'))location.href=a.href;else if(history.length>1)history.back();else location.href='./';};
+hd.appendChild(bk);
+function park(el,to){if(!el||!el.parentNode)return;var ph=document.createComment('q24');el.parentNode.insertBefore(ph,el);to.appendChild(el);moved.push([el,ph]);}
+function unpark(){while(moved.length){var m=moved.pop();if(m[1].parentNode){m[1].parentNode.insertBefore(m[0],m[1]);m[1].parentNode.removeChild(m[1]);}}L.textContent='';S.textContent='';}
+function build(){
+ if(COACH){var sc=$('scShot');park(stageEl(),L);park(sc.querySelector('.bar1'),S);S.appendChild(fullB);park(sc.querySelector('.tags'),S);park(sc.querySelector('.seekS'),S);park(sc.querySelector('.ctrl'),S);park(sc.querySelector('.card.say'),S);}
+ else if(PCOACH){park(stageEl(),L);S.appendChild(hd);park(document.querySelector('.wrap>.top'),hd);S.appendChild(fullB);park(document.querySelector('.wrap>.ctrl'),S);park(document.querySelector('.wrap>.row'),S);var t2=$('sTitle');park(t2&&t2.closest('section'),S);}
+ else{park($('stage'),L);S.appendChild(hd);park(document.querySelector('.wrap>.top'),hd);S.appendChild(fullB);park(document.querySelector('.wrap>.bar'),S);park(document.querySelector('.wrap>.opts'),S);var st=$('sTitle');park(st&&st.closest('section'),S);}
+}
+function want(){if(!(mq.matches||FORCE))return false;return COACH?!$('scShot').hidden:true;}
+function px(v){return parseFloat(v)||0;}
+function size(){
+ var cs=getComputedStyle(root),cw=root.clientWidth-px(cs.paddingLeft)-px(cs.paddingRight),ch=root.clientHeight-px(cs.paddingTop)-px(cs.paddingBottom);
+ var gap=full?0:8,side=full?0:Math.max(240,Math.min(340,cw*.3)),avail=cw-side-gap,w,el=stageEl();
+ if(COACH)w=Math.floor(Math.min(full?cw:avail,(ch-2)/0.5512));
+ else if(PCOACH){window.Q24L={on:true,h:Math.floor(ch-2)};w=Math.floor(Math.min(full?cw:avail,(ch-2)*3.28/1.86+2));}
+ else{var band=Math.round(Math.max(46,Math.min(78,ch*.14))),cap=Math.round(Math.max(22,Math.min(30,ch*.07)));
+  window.Q24L={on:true,h:Math.floor(ch-2),band:band,cap:cap};
+  var tw=Math.ceil((ch-2-band-cap)*3.28/1.86)+2;w=Math.floor(full?cw:Math.min(avail,tw));}
+ if(el)el.style.width=w+'px';L.style.width=full?'':w+'px';
+}
+function fire(){selfFire=true;try{window.dispatchEvent(new Event('resize'));}catch(e){}selfFire=false;}
+function fsReq(){var d=document.documentElement,f=d.requestFullscreen||d.webkitRequestFullscreen;if(!f||document.fullscreenElement||document.webkitFullscreenElement)return;try{var p=f.call(d,{navigationUI:'hide'});fsOn=true;if(p&&p.catch)p.catch(function(){fsOn=false;});}catch(e){fsOn=false;}}
+function fsExit(){var x=document.exitFullscreen||document.webkitExitFullscreen;if(fsOn&&x&&(document.fullscreenElement||document.webkitFullscreenElement)){try{var p=x.call(document);if(p&&p.catch)p.catch(function(){});}catch(e){}}fsOn=false;}
+function dropFull(fromPop){if(!full)return;full=false;clearInterval(syncT);fsExit();if(!fromPop&&history.state&&history.state.q24full)history.back();}
+function apply(){
+ var w=want();
+ if(w&&!on){on=true;build();document.body.classList.add('q24-land');}
+ else if(!w&&on){dropFull(false);on=false;document.body.classList.remove('q24-land');unpark();var el=stageEl();if(el)el.style.width='';window.Q24L={on:false};}
+ document.body.classList.toggle('q24-full',on&&full);
+ if(on)size();
+ fire();
+}
+function playing(){var b=$(SRC.play),t=b?b.textContent:'';return t.indexOf('⏸')>=0||t.indexOf('⏹')>=0;}
+function sync(){var p=O.querySelector('[data-a=play]'),s=$(SRC.pos);p.textContent=playing()?'⏸':'▶';O.querySelector('.ps').textContent=s?(PCOACH?s.textContent.split(' · ')[0]:s.textContent):'';}
+function wake(){O.classList.remove('dim');clearTimeout(dimT);dimT=setTimeout(function(){if(playing())O.classList.add('dim');},3000);}
+function press(a){var b=$(SRC[a]);if(b&&!b.disabled)b.click();setTimeout(sync,60);}
+function enterFull(){if(!on||full)return;full=true;try{history.pushState({q24full:1},'');}catch(e){}fsReq();apply();if(!playing())press('play');syncT=setInterval(sync,400);sync();wake();}
+function exitFull(){dropFull(false);apply();}
+O.querySelector('.bk').onclick=function(){exitFull();};
+O.querySelectorAll('.rt button').forEach(function(b){b.onclick=function(){press(b.dataset.a);wake();};});
+root.addEventListener('pointerdown',function(){wasDim=O.classList.contains('dim');wake();},true);
+// in full view a tap on the table first brings the buttons back; a second tap pauses / resumes
+L.addEventListener('click',function(e){if(!full)return;if(e.target.closest&&e.target.closest('.tipover'))return;e.stopPropagation();e.preventDefault();if(!wasDim)press('play');wake();},true);
+addEventListener('popstate',function(){if(full){dropFull(true);apply();}});
+['fullscreenchange','webkitfullscreenchange'].forEach(function(n){document.addEventListener(n,function(){if(fsOn&&!(document.fullscreenElement||document.webkitFullscreenElement)){fsOn=false;if(full)exitFull();}});});
+var rT=0;function onResize(){if(selfFire)return;clearTimeout(rT);rT=setTimeout(apply,80);}
+addEventListener('resize',onResize);addEventListener('orientationchange',onResize);if(window.visualViewport)visualViewport.addEventListener('resize',onResize);
+if(mq.addEventListener)mq.addEventListener('change',onResize);else if(mq.addListener)mq.addListener(onResize);
+if(COACH&&window.MutationObserver)new MutationObserver(function(){apply();}).observe($('scShot'),{attributes:true,attributeFilter:['hidden']});
+apply();
 })();
 </script>
 </body></html>
