@@ -906,7 +906,7 @@ function posOf(a){return ordered(a);}
 /* 키스 판단: 수구가 맞힌 공과 다시 부딪히면 항상 키스. 적구끼리 부딪힌 경우는 2적구가 거의 그 자리(반 개 이내)에서 맞을 때만 허용
    (공이 붙어 있으면 1적구가 2적구를 살짝 건드리는 것은 흔하고, 득점이 그 움직임에 기대지 않으면 사람도 노려 칠 수 있다) */
 function noKiss(r,pos){const ev=r.events||[];if(ev.some(e=>e.type==='ball'&&e.fresh===false))return false;if(!ev.some(e=>e.type==='okiss'))return true;if(!pos)return false;
- const hits=ev.filter(e=>e.type==='ball'&&e.fresh!==false),e2=hits[1];if(!e2||e2.ox==null)return false;const q=pos[e2.target];return !!q&&Math.hypot(e2.ox-q.x,e2.oy-q.y)<P.R;}
+ const hits=ev.filter(e=>e.type==='ball'&&e.fresh!==false),e2=hits[1];if(!e2||e2.ox==null)return false;const q=pos[e2.target];if(!q)return false;const D=2*P.R,big=Math.hypot(pos[1].x-pos[2].x,pos[1].y-pos[2].y)-D<=1.5*D;return Math.hypot(e2.ox-q.x,e2.oy-q.y)<(big?D:P.R);}
 /* ---------- 계산 시간 예산: 기기 속도와 상관없이 약 3초 안에 안내 ---------- */
 let T_END=0;const now=()=>performance.now();
 async function runGen(g,tok,until){let r,t0=performance.now();do{r=g.next();if(performance.now()-t0>24){await sleep(0);if(tok!==ST.tok)return null;if(until&&now()>until)return {};t0=performance.now();}}while(!r.done);return r.value||{};}
@@ -1004,8 +1004,9 @@ function cheapH(x){const f=x.f||(x.f=feat(x)),s=x.shot,id=x.cls&&x.cls.id,adv=LV
  h+=(CLS_PEN[adv?'adv':'basic'][id]??1.2);
  if(f.kick>=2){const bt=bankType(x.events);h+=(BANK_PEN[bt.type]??1)*(adv?.5:1);if(bt.type==='rot'&&x.eng==='rev')h+=.4;}
  h+=.10*f.path;
- h+=Math.max(0,Math.abs(s.tipX||0)-.2)*3+Math.max(0,-(s.tipY||0)-.05)*2.5;
- h+=Math.max(0,s.speed-3.3)*1.6+Math.max(0,2.1-s.speed)*.6;
+ {const ck=condKey(),sl=ck==='slow',fa=ck==='fast'; // 느림: 강타 감점 완화 · 빠름: 과회전·강타 감점 강화
+ h+=Math.max(0,Math.abs(s.tipX||0)-.2)*(fa?3.8:3)+Math.max(0,-(s.tipY||0)-.2)*2.5;
+ h+=Math.max(0,s.speed-(sl?3.7:3.3))*(sl?1.0:fa?2.2:1.6)+Math.max(0,2.1-s.speed)*(sl?.9:.6);}
  if(!f.kick&&th!=null)h+=Math.max(0,.12-th)*8+Math.max(0,th-.88)*4;
  if(x.lib)h-=.6;
  h+=stancePen(x);
@@ -1082,7 +1083,7 @@ function englishType(a,shot){if(Math.abs(shot.tipX||0)<.08)return 'none';const p
  th: 권장 두께(비율), n: 권장 팁 수(당점 거리, 1팁=0.2), sx: 옆 회전 팁 범위, eng: 회전 방향, y: 상하 당점(up/mid/low), pw: 권장 세기 */
 const STD={back:{th:[.25,.5],n:[2,3],eng:'run',y:'up',pw:[3,3],fail:'1적구와의 2~3쿠션 교차 키스(쫑)'},
  side:{th:[.375,.625],n:[1.5,2.5],eng:'run',y:'mid',pw:[3,3],fail:'과도한 타격으로 인한 밀림(길게 벗어남)'},
- front:{th:[.375,.75],n:[2,3],eng:'run',y:'low',pw:[4,4],fail:'회전·힘 부족으로 3쿠션 이후 짧게 멈춤'},
+ front:{th:[.375,.75],n:[2,3],eng:'run',y:'any',pw:[4,4],fail:'회전·힘 부족으로 3쿠션 이후 짧게 멈춤'},
  thin:{th:[.125,.25],sx:[0,1],eng:'norun',y:'up',pw:[2,2],fail:'정회전 과다 사용으로 2쿠션에서 급꺾임'},
  grand:{th:[.25,.5],n:[2.5,3],eng:'run',y:'up',pw:[4,5],fail:'스피드 부족으로 4쿠션 직전 힘 소진'},
  revS:{th:[.375,.625],n:[2,3],eng:'rev',y:'low',pw:[3,3],fail:'강타로 인해 역회전이 쿠션에 안 먹힘'},
