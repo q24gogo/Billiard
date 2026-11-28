@@ -925,7 +925,7 @@ function* humanSweep(pos,m,until){const out=[],D=2*P.R,sim=s=>{const r=P.simulat
  for(const c of C){if(now()>until||out.length>=140)break;const r=sim(c.s);if(r.success&&noKiss(r,pos))out.push(r);yield 0;}
  return out;}
 /* ---------- 배치 판정 룰 (공 지름 D≈6.15cm, 카메라 좌표 기준) ----------
- 빅볼/인접: 두 적구 표면 간 ≤1.0D(중심 간 ≤2.0D) → 빅볼, ≤2.0D → 인접
+ 빅볼/인접: 두 적구 표면 간 ≤1.5D → 빅볼, ≤2.5D → 인접 (사용자 요청으로 한 단계 넓힘)
  투터치 주의: 수구↔적구 표면 간 ≤0.5D
  코너(가두리): 테이블 코너에서 3.0D 이내의 적구
  쿠션 밀착(프로즌): 적구↔쿠션 간격 ≤0.1D  (키스 위험은 흔들어 쳐 본 키스 확률로 판단) */
@@ -933,7 +933,7 @@ function layoutInfo(pos){const D=2*P.R,R0=P.R,g=(a,b)=>Math.hypot(a.x-b.x,a.y-b.
  for(const j of [1,2]){const q=pos[j];o.dbl[j]=g(pos[0],q)<=.5*D;o.corner[j]=[[0,0],[W,0],[0,H],[W,H]].some(([cx0,cy0])=>Math.hypot(q.x-cx0,q.y-cy0)<=3*D+R0);o.frozen[j]=Math.min(q.x-R0,W-R0-q.x,q.y-R0,H-R0-q.y)<=.1*D;}
  return o;}
 /* 두 적구 인접 판단: 사이 간격(가장자리끼리)이 공 지름 2개 이하면 인접, 1.5개 이하면 '붙음' */
-function pairInfo(pos){const D=2*P.R,g=Math.hypot(pos[1].x-pos[2].x,pos[1].y-pos[2].y)-D;return {gap:g,balls:g/D,adj:g<=2*D,strong:g<=1.5*D,big:g<=1.0*D};}
+function pairInfo(pos){const D=2*P.R,g=Math.hypot(pos[1].x-pos[2].x,pos[1].y-pos[2].y)-D;return {gap:g,balls:g/D,adj:g<=2.5*D,strong:g<=2.0*D,big:g<=1.5*D};}
 /* 두 적구 인접: 쿠션을 먼저 돌아 두 공을 한꺼번에 노리는 길. 각도를 8°→4°→2°→1° 간격으로 촘촘하게 좁혀 가며, 시간이 다 되면 멈춘다 */
 function* pairBankSweep(pos,m,until){const out=[],A=[],seen=new Set();for(const st of [8,4,2,1])for(let i=0;i<360;i+=st)if(!seen.has(i)){seen.add(i);A.push(i);}
  for(const [speed,tips] of [[3.0,[0]],[3.0,[.25,-.25]],[2.4,[0,.25,-.25]],[3.6,[0,.25,-.25]]])for(const i of A){if(now()>until||out.length>=40)break;const ang=i*Math.PI/180;for(const tipX of tips){const r=P.simulate(pos,{angle:ang,speed,tipX,tipY:.2},{maxC:5,dt:.016,model:m});
@@ -952,8 +952,14 @@ function bankType(ev){ev=ev||[];const fb=ev.findIndex(e=>e.type==='ball'),cs=(fb
 const BANK_KO={rot:'외곽 회전형',cross:'횡단형',rev:'리버스(되돌리기형)',other:'변형'};
 const BANK_PEN={rot:0,cross:1.6,other:2.0,rev:2.6}; // 회전형이 실수 여유에서 크게 뒤질 때만 횡단·리버스
 function shotName(x){const id=x&&x.cls&&x.cls.id,b=bankType(x&&x.events);if(b.n>=2){const t=b.n>=3?'쓰리뱅크':'투뱅크';return (b.type==='rev'?'리버스':BANK_KO[b.type])+' '+t;}return SHOT_KO[id]||'샷';}
-const CLS_PEN={basic:{side:0,back:0,front:0,thin:.5,bank:0,grand:.5,crossS:1.0,crossL:1.0,revS:1.0,revL:1.0,special:1.5,unknown:1.3},
+const CLS_PEN={basic:{side:0,back:0,front:0,thin:.6,bank:0,grand:.6,crossS:2.0,crossL:2.0,revS:1.8,revL:1.8,special:2.2,unknown:2.0},
  adv:{grand:-.4,revS:-.4,revL:-.4,crossS:-.3,crossL:-.3,bank:-.2,thin:0,side:.15,back:.15,front:.15,special:.6,unknown:.8}};
+/* 치기 어려운 자세: 큐가 지나갈 뒤쪽이 쿠션에 막히거나(수구가 쿠션에 붙어 쿠션 쪽에서 쳐야 함), 다른 공이 큐 선 뒤에 있으면 */
+function stancePen(x){const a=ST.a;if(!a||!x.shot)return 0;const pos=ordered(a),c=pos[0],ux=-Math.cos(x.shot.angle),uy=-Math.sin(x.shot.angle),R0=P.R;
+ const tb=[ux<0?(c.x-R0)/-ux:ux>0?(W-R0-c.x)/ux:1e9,uy<0?(c.y-R0)/-uy:uy>0?(H-R0-c.y)/uy:1e9],b=Math.min(...tb);let p=0;
+ let why='';if(b<.012){p+=6;why='rail';}else if(b<.03){p+=2.2;why='rail';}else if(b<.08){p+=.6;why='railNear';}
+ for(const q of pos.slice(1)){const dx=q.x-c.x,dy=q.y-c.y,t=dx*ux+dy*uy;if(t<=0||t>.45)continue;const lat=Math.abs(dx*uy-dy*ux);if(lat<R0+.012){p+=6;why='block';}else if(lat<R0+.03){p+=1.2;why=why||'blockNear';}}
+ x.stance=why;return p;}
 function feat(x){const ev=x.events||[],fb=ev.findIndex(e=>e.type==='ball'),kick=(fb<0?ev:ev.slice(0,fb)).filter(e=>e.type==='cushion').length;
  return {kick,nC:x.rule&&x.rule.cushions!=null?x.rule.cushions:ev.filter(e=>e.type==='cushion').length,path:x.pathLength||0};}
 function cheapH(x){const f=x.f||(x.f=feat(x)),s=x.shot,id=x.cls&&x.cls.id,adv=LV==='adv',th=x.cut;let h=0;
@@ -968,6 +974,7 @@ function cheapH(x){const f=x.f||(x.f=feat(x)),s=x.shot,id=x.cls&&x.cls.id,adv=LV
  h+=Math.max(0,s.speed-3.3)*1.6+Math.max(0,2.1-s.speed)*.6;
  if(!f.kick&&th!=null)h+=Math.max(0,.12-th)*8+Math.max(0,th-.88)*4;
  if(x.lib)h-=.6;
+ h+=stancePen(x);
  // 1순위 빅볼: 인접 구간을 향한 뱅크샷·단순 뒤/옆돌리기를 먼저
  const ly=ST.lay;if(ST.pair&&ST.pair.big){if(x.pairBank&&f.kick>=3)h-=.5;else if(id==='back'||id==='side')h-=.2;}
  // 2순위 자연스러운 정회전: 1/4~1/2 두께 선호
@@ -1100,7 +1107,7 @@ function coachSegs(a){const R=route(a,'rec'),sh=a.sh.rec,tn=shotName(a.r),p=[],q
  if(a.r.approx){const g=(a.r.gap||0)/(2*P.R);q(`정확히 득점되는 길은 계산되지 않아 가장 가까운 길을 안내해요. 2적구를 ${g<.25?'종이 한 장':g<.65?'공 반 개':g<1.2?'공 한 개':'공 '+g.toFixed(1)+'개'} 차이로 스치는 길이라 두께와 당점을 조금씩 조정하며 쳐 보세요.`);}
  {const bt=bankType(R.ev);if(bt.n>=3){const hasRot=ST.routes.some(y=>y!==a.r&&bankType(y.events).n>=3&&bankType(y.events).type==='rot');
    q(bt.type==='rot'?`가장 무난한 외곽 회전 길이에요. 쿠션 순서는 ${bt.code.split('').join('-')}번이에요.`:`외곽 회전 각이 좁아 ${bt.type==='cross'?'횡단':bt.type==='rev'?'리버스':'변형'} 쓰리뱅크로 우회하는 것이 유리합니다. 쿠션 순서는 ${bt.code.split('').join('-')}번이에요.`);}}
- {const pr=ST.pair,kk=R.ev.findIndex(e=>e.type==='ball');if(pr&&pr.adj&&kk>=2)q(`${pr.balls<.25?'두 적구가 거의 맞닿아 있어':'두 적구가 공 '+(pr.balls<.75?'반 개':pr.balls<1.25?'한 개':pr.balls<1.75?'한 개 반':'두 개')+' 간격으로 붙어 있어'}, 쿠션을 먼저 ${R.ev.slice(0,kk).filter(e=>e.type==='cushion').length}번 돌아 두 공을 한꺼번에 노려요.`);}
+
  if(R.kick&&R.cus[0])p.push({t:`${RAIL[R.cus[0].rail]} ${R.cus[0].pt.toFixed(1)} 포인트를 먼저 맞히고,`,hl:R.cus[0]});
  else if(R.first!=null)q(`${BALL_KO[R.first]} ${R.side==='L'?'왼쪽':'오른쪽'}을 ${frac8(R.cut)} 두께로 겨냥하고,`);
  q(`당점은 ${sh.tip}, 세기는 ${sh.pwKo}${roOf(sh.pwKo)} 치세요.`);
@@ -1113,6 +1120,7 @@ function coachSegs(a){const R=route(a,'rec'),sh=a.sh.rec,tn=shotName(a.r),p=[],q
  {const ly=ST.lay,j=x0j(a),k=j===1?2:1,t=[];if(ly){if(j&&ly.dbl[j]&&!R.kick)t.push('수구와 1적구가 가까워 투터치 위험이 있어요. 큐를 짧게 끊어 치세요');
    if(j&&ly.frozen[j]&&!R.kick)t.push('1적구가 쿠션에 붙어 있어 얇게 깎기보다 두껍게 미는 느낌으로 치세요');
    if(k&&ly.corner[k])t.push('2적구가 코너에 있어 목표가 넓어요');
+   stancePen(a.r);if(a.r.stance==='rail')t.push('수구가 쿠션에 붙어 있어 큐를 쿠션 위에 세우고 짧게 끊어 치세요');else if(a.r.stance==='block'||a.r.stance==='blockNear')t.push('큐 뒤에 공이 있어 큐를 살짝 세워 짧게 끊어 치세요');
    if(k&&ly.frozen[k]){const ev=R.ev,i2=ev.findIndex(e=>e.type==='ball'&&e.target===k);if(i2>0&&ev[i2-1].type==='cushion')t.push('2적구가 쿠션에 붙어 있어 쿠션을 먼저 맞고 긁고 들어가요');}}
   if(t.length)q(t.join('. ')+'.');}
  const c=R.cus.filter((x,i)=>!(R.kick&&i===0)).slice(0,3);
