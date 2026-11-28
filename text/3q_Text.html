@@ -80,9 +80,17 @@ body.full #landS{display:none}body.full #landL{flex:1;align-items:center;padding
 #landS .ctrl{grid-template-columns:1fr 1fr;gap:5px}#landS .ctrl button{font-size:12px;padding:2px 4px;min-height:34px}#landS .brandL img{height:34px}#landS .top h1{font-size:13px}#landS .cuesel button{padding:4px 8px;font-size:13px}#landS .kp b{font-size:13px}
 #landS .cuesel>span{display:none}#landS .cuesel{display:flex;gap:5px}#landS .cuesel button{flex:1;white-space:nowrap;justify-content:center}#landS .kp span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:9.5px;display:block}
 .sayhint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:4;background:#0a1018e6;border:1px solid #ffd166;color:#ffd166;font-weight:800;border-radius:999px;padding:6px 14px;font-size:14px;animation:sh 1.6s ease-in-out infinite}@keyframes sh{50%{opacity:.55}}
-.inapp{position:fixed;left:0;right:0;top:0;z-index:50;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;background:#3b2a05;color:#ffd166;border-bottom:1px solid #ffd166;padding:8px 12px;font-weight:700;font-size:14px}.inapp button{background:#ffd166;color:#111;border:0;border-radius:999px;padding:6px 14px;font-weight:800}
 .navg{display:inline-flex;gap:0;border:1px solid var(--line,#22313f);border-radius:12px;overflow:hidden}.navg button{border:0;border-radius:0;border-right:1px solid #22313f;min-height:40px;font-weight:800}.navg button:last-child{border-right:0}.navg button.on{background:#14532d;color:#d1fae5}#bPause.pz{background:#5a3b06;color:#ffd166}
 #landS .navg{grid-column:1/-1;display:flex}#landS .navg button{flex:1;font-size:12px;padding:2px}
+/* 버튼 공통: 둥근 사각형, 누르거나 선택되면 외곽선이 밝게 살아난다 */
+button{border-radius:12px!important;border:1.5px solid #2a3b4e!important;transition:border-color .12s,box-shadow .12s,background .12s}
+button:hover:not(:disabled){border-color:#3d5873!important}
+button:active:not(:disabled),button.on,button.pz,.seg button.on,.navg button.on,.cuesel button.on,.alts button.on,#ov .rt button.on{border-color:#6ff0c2!important;box-shadow:0 0 0 1px #6ff0c2,0 0 10px #6ff0c266!important}
+button.pz{border-color:#ffd166!important;box-shadow:0 0 0 1px #ffd166,0 0 10px #ffd16666!important}
+button:focus-visible{outline:none;border-color:#9ecbff!important;box-shadow:0 0 0 2px #9ecbff88!important}
+.seg,.navg{border:0!important;overflow:visible!important;gap:6px;background:none!important}
+.seg button,.navg button{border-right:1.5px solid #2a3b4e!important}
+.seg button.on{background:#183451!important;color:#fff}
 </style></head><body>
 <main>
 <div class="top" id="topBar">
@@ -90,14 +98,13 @@ body.full #landS{display:none}body.full #landL{flex:1;align-items:center;padding
  <div class="cuesel"><span>수구</span><button id="cw" class="on"><i style="background:#f4f7ef"></i>흰 공</button><button id="cy"><i style="background:#f8cc35"></i>노란공</button></div>
  <div class="kp"><div><span>배치</span><b id="kN">0</b></div><div><span>추천샷 득점</span><b id="kOk">0</b></div><div><span>추천 수준</span><b id="kL" class="small">Basic</b></div><div><span>테이블</span><b id="kM" class="small">보통</b></div></div>
 </div>
-<div class="box" id="tbox"><canvas id="cv"></canvas><div class="hint" id="dragHint">공을 끌어서 옮길 수 있어요</div><div class="badge" id="badge" style="opacity:0"></div><div class="busy" id="busy" hidden>길 찾는 중…</div><div class="inapp" id="inApp" hidden><span>카카오톡 등 앱 안의 브라우저에서는 음성이 나오지 않아요.</span><button type="button" id="inAppGo">크롬으로 열기</button></div><button class="sayhint" id="sayHint" hidden type="button">🔊 화면을 한 번 누르면 음성이 나와요</button></div>
+<div class="box" id="tbox"><canvas id="cv"></canvas><div class="hint" id="dragHint">공을 끌어서 옮길 수 있어요</div><div class="badge" id="badge" style="opacity:0"></div><div class="busy" id="busy" hidden>길 찾는 중…</div><button class="sayhint" id="sayHint" hidden type="button">🔊 화면을 한 번 누르면 음성이 나와요</button></div>
 <div class="ctrl" id="ctrlBar">
  <div class="navg" role="group" aria-label="배치 이동"><button id="bPrev" title="이전 배치">◀◀ 이전</button><button id="bPause" title="정지 / 다시 진행 (테이블을 한 번 눌러도 됩니다)">⏸ 정지</button><button id="bNew" class="primary" title="다음 배치">다음 ▶▶</button><button id="bAuto" class="tg" title="배치 → 코칭 → 득점 → 다음 배치 자동 반복">🔁 자동</button></div>
  <div class="seg" id="lvSeg" role="group" aria-label="추천샷 수준"><button data-l="basic" class="on" title="가장 보편적인 표준 샷">Basic</button><button data-l="adv" title="고점자 샷 · 포지션 플레이(득점 뒤 다음 공 배치까지 생각)">Advanced</button></div>
  <div class="seg" id="clothSeg" role="group" aria-label="천 색"><button data-c="blue">블루</button><button data-c="green">초록</button><button data-c="def" class="on" title="실제 경기 영상의 테이블 색">회색</button></div>
  <label class="chk"><input id="cTraj" type="checkbox" checked> 궤적</label>
  <label class="chk"><input id="cGrid" type="checkbox"> 격자</label>
- <label class="chk" title="공끼리 부딪힐 때 딱 소리"><input id="cClack" type="checkbox" checked> 접촉음</label>
  <span class="sep"></span>
  <button id="bSay">🔊 음성</button>
  <button id="bPhone" title="TV로 볼 때 회원이 각자 폰(블루투스 이어폰)으로 멘트 듣기">📡 중계 <b id="phN"></b></button>
@@ -830,15 +837,9 @@ let SAYQ=Promise.resolve();
 function say(t,o){if(t)phSay(t,o);return sayLocal(t);}
 /* 음성: 브라우저는 사용자가 화면을 한 번 누르기 전에는 음성을 막거나 늦게 낸다.
    → 첫 터치/클릭/키 입력 때 음성 엔진을 깨우고(무음 한 마디), 그 전에는 기다리지 않고 바로 넘어간다. */
-/* 앱 안 브라우저(카카오톡·네이버·인스타 등)는 웹 음성(TTS)을 지원하지 않는다 → 외부 브라우저로 열기 */
-(function(){const ua=navigator.userAgent||'',inapp=/KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|DaumApps|everytimeApp|BAND\//i.test(ua),noTTS=!('speechSynthesis' in window);if(!inapp&&!(noTTS&&/Android|iPhone|iPad|iPod/i.test(ua)))return;
- const url=location.href,and=/Android/i.test(ua),ios=/iPhone|iPad|iPod/i.test(ua);
- const go=()=>{if(/KAKAOTALK/i.test(ua)){location.href='kakaotalk://web/openExternal?url='+encodeURIComponent(url);return;}if(and){location.href='intent://'+url.replace(/^https?:\/\//,'')+'#Intent;scheme=https;package=com.android.chrome;end';return;}alert(ios?'오른쪽 아래 ··· 또는 공유 버튼 → "Safari로 열기"를 눌러 주세요.':'브라우저 메뉴에서 "다른 브라우저로 열기"를 눌러 주세요.');};
- const show=()=>{const b=document.getElementById('inApp');if(b){b.hidden=false;document.getElementById('inAppGo').onclick=go;}};if(document.readyState==='loading')addEventListener('DOMContentLoaded',show);else show();
- if(/KAKAOTALK/i.test(ua)&&!sessionStorage.getItem('3q-ext-tried')){try{sessionStorage.setItem('3q-ext-tried','1');}catch(e){}setTimeout(go,300);}})();
 let SAY_UNLOCK=!!(navigator.userActivation&&navigator.userActivation.hasBeenActive);
 let SAY_BLOCK=false;function sayHint(on){SAY_BLOCK=!!on&&!SAY_UNLOCK;const h=$('sayHint');if(h)h.hidden=!on;}
-function unlockSay(){try{if(CLACK)clackAC();}catch(e){}if(SAY_UNLOCK)return;SAY_UNLOCK=true;sayHint(false);try{const ss=speechSynthesis;ss.cancel();const u=new SpeechSynthesisUtterance('.');u.volume=0;u.lang='ko-KR';const v=pickKo();if(v)u.voice=v;ss.speak(u);}catch(e){}}
+function unlockSay(){if(SAY_UNLOCK)return;SAY_UNLOCK=true;sayHint(false);try{const ss=speechSynthesis;ss.cancel();const u=new SpeechSynthesisUtterance('.');u.volume=0;u.lang='ko-KR';const v=pickKo();if(v)u.voice=v;ss.speak(u);}catch(e){}}
 ['pointerdown','keydown','touchstart'].forEach(n=>addEventListener(n,unlockSay,{capture:true,passive:true}));
 try{speechSynthesis.getVoices();speechSynthesis.addEventListener('voiceschanged',()=>{});}catch(e){}
 function sayLocal(t){if(!SAY_ON||!t||!('speechSynthesis' in window))return Promise.resolve();
@@ -877,7 +878,6 @@ $('bLearn').onclick=()=>$('fLearn').click();
 $('fLearn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const d=JSON.parse(await f.text());if(!applyLearn(d,'파일에서 불러옴'))throw 0;}catch(err){setMsg('fail','학습 데이터','Lab 학습 데이터 파일이 아니에요.',null);}};
 /* ---------- 상태 ---------- */
 const ST={a:null,cue:0,routes:[],all:[],sel:0,fail:null,n:0,ok:0,busy:false,tok:0,auto:false,anim:null,mode:'idle'};
-let CLACK=true;try{CLACK=localStorage.getItem('3q-text-clack')!=='0';}catch(e){}
 let LV='basic',TRJ=true;try{LV=localStorage.getItem('3q-text-lv')==='adv'?'adv':'basic';TRJ=localStorage.getItem('3q-text-trj')!=='0';}catch(e){}
 let CUE=0;try{CUE=+localStorage.getItem('3q-text-cue')||0;}catch(e){}
 function cueBtns(){$('cw').classList.toggle('on',CUE===0);$('cy').classList.toggle('on',CUE===1);const o=document.querySelector('#ovCue i');if(o)o.style.background=CUE===0?'#f4f7ef':'#f8cc35';}
@@ -1118,7 +1118,6 @@ function clothInit(){const b=G.pal||{};CLOTH.blue={...b,cloth0:'#2f7ac9',cloth1:
 function clothBtns(){document.querySelectorAll('#clothSeg button').forEach(x=>x.classList.toggle('on',x.dataset.c===CLOTH_SEL));$('cGrid').checked=GRID;const o=$('ovGrid');if(o)o.classList.toggle('on',GRID);}
 try{const c=localStorage.getItem('3q-text-cloth');if(c==='blue'||c==='green')CLOTH_SEL=c;GRID=localStorage.getItem('3q-text-grid')==='1';}catch(e){}
 $('clothSeg').onclick=e=>{const b=e.target.closest('button[data-c]');if(!b)return;CLOTH_SEL=b.dataset.c;try{localStorage.setItem('3q-text-cloth',CLOTH_SEL);}catch(_){}clothBtns();};
-$('cClack').checked=CLACK;$('cClack').onchange=()=>{CLACK=$('cClack').checked;try{localStorage.setItem('3q-text-clack',CLACK?'1':'0');}catch(e){}if(CLACK){clackAC();clack();}};
 $('cGrid').onchange=()=>{GRID=$('cGrid').checked;{const o=$('ovGrid');if(o)o.classList.toggle('on',GRID);}try{localStorage.setItem('3q-text-grid',GRID?'1':'0');}catch(_){}};
 function trjBtns(){$('cTraj').checked=TRJ;const o=$('ovTr');if(o)o.classList.toggle('on',TRJ);}
 function setLv(l){if(l===LV)return;LV=l;try{localStorage.setItem('3q-text-lv',l);}catch(e){}lvBtns();if(!ST.a)return;if(l==='adv'&&!ST.advDone){stopSay();ST.anim=null;analyse();return;}if(ST.all.length){const tok=++ST.tok;stopSay();ST.anim=null;if(pickRoutes().length)playRoute(0,tok);}}
@@ -1213,7 +1212,7 @@ const LOG=[];function addLog(a,ok,t){LOG.unshift({n:ST.n,cue:a.cue,ok,t});$('log
 function drawT(){cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,cv.width,cv.height);table();const a=ST.a;if(!a){return;}SH=a.k;
  const rk=ST.mode==='fail'&&a.sh.fix?'fix':'rec';
  if(TRJ&&a.sh&&a.sh.rec){const tr=track(a,'rec');path(tr.path,COL.rec,[3,3.5]);}
- if(ST.anim){const A=ST.anim,tt=A.t(),col=COL[A.kind];if(CLACK&&A.tr.hit){if(A.lastT==null)A.lastT=-1;for(const h of A.tr.hit)if(h.t>A.lastT&&h.t<=tt)clack(h);A.lastT=tt;}const n=A.tr.path.length,F=A.tr;if(tt>0&&TRJ){const k=F.dur>0?Math.ceil(clamp(tt/F.dur,0,1)*(n-1))+1:n;path(F.path.slice(0,Math.max(2,k)),col,[]);}
+ if(ST.anim){const A=ST.anim,tt=A.t(),col=COL[A.kind];const n=A.tr.path.length,F=A.tr;if(tt>0&&TRJ){const k=F.dur>0?Math.ceil(clamp(tt/F.dur,0,1)*(n-1))+1:n;path(F.path.slice(0,Math.max(2,k)),col,[]);}
   if(TRJ)for(const e of F.ev||[])if(e.t<=tt)point(e.x,e.y,col);A.pos().forEach((q,i)=>q&&ball(S2(q[0],q[1]),i));const c=A.cue();if(c)cue(a.pre[a.cue],c.ang,c.gap,c.alpha);
   if(A.done()){ST.anim=null;A.res();}}
  else{if(TRJ&&a.sh&&a.sh[rk]){const tr=track(a,rk);for(const e of tr.ev||[])point(e.x,e.y,COL[rk]);}a.pre.forEach((q,i)=>ball(S2(q[0],q[1]),i));
@@ -1226,11 +1225,6 @@ window.guideAvoid=(x,y,w,h)=>{const r=cv.getBoundingClientRect();if(!r.width)ret
   const b=el.getBoundingClientRect();if(!b.width)continue;const m=8*k,bx=(b.left-r.left)*k-m,by=(b.top-r.top)*k-m,bw=b.width*k+2*m,bh=b.height*k+2*m;
   const ox=Math.max(0,Math.min(x+w,bx+bw)-Math.max(x,bx)),oy=Math.max(0,Math.min(y+h,by+bh)-Math.max(y,by));if(ox>0&&oy>0)p+=w*8+ox*oy/(w||1);}
  return p;};
-/* 공 접촉음: 짧은 '딱' 소리(합성음, 파일 없음) */
-let CLACK_AC=null;function clackAC(){if(!CLACK_AC){const C=window.AudioContext||window.webkitAudioContext;if(C)CLACK_AC=new C();}if(CLACK_AC&&CLACK_AC.state==='suspended')CLACK_AC.resume();return CLACK_AC;}
-function clack(h){try{const ac=clackAC();if(!ac)return;const t=ac.currentTime,len=Math.floor(ac.sampleRate*.045),buf=ac.createBuffer(1,len,ac.sampleRate),d=buf.getChannelData(0);
- for(let i=0;i<len;i++){const e=Math.exp(-i/(ac.sampleRate*.006));d[i]=(Math.random()*2-1)*e*.6+Math.sin(2*Math.PI*2600*i/ac.sampleRate)*e*.5;}
- const src=ac.createBufferSource(),bp=ac.createBiquadFilter(),g=ac.createGain();src.buffer=buf;bp.type='bandpass';bp.frequency.value=2400;bp.Q.value=1.4;g.gain.value=.9;src.connect(bp);bp.connect(g);g.connect(ac.destination);src.start(t);}catch(e){}}
 function hlDraw(){if(!HL||!ST.a||!TRJ&&false)return;const c=S2(HL.x,HL.y),r=Math.max(10*DPR,BR()*1.5),ph=(performance.now()%900)/900;point(HL.x,HL.y,'#ffd166');cx.save();cx.strokeStyle='#ffd166';cx.lineWidth=Math.max(2,2*DPR);cx.globalAlpha=1-ph*.7;cx.beginPath();cx.arc(c.x,c.y,r*(1+ph*.8),0,Math.PI*2);cx.stroke();cx.restore();}
 function pauseMark(){if(!PAUSED)return;const w=cv.width,h=cv.height,r=Math.min(w,h)*.09;cx.save();cx.fillStyle='rgba(0,0,0,.45)';cx.beginPath();cx.arc(w/2,h/2,r*1.5,0,Math.PI*2);cx.fill();cx.fillStyle='#fff';cx.fillRect(w/2-r*.55,h/2-r*.7,r*.38,r*1.4);cx.fillRect(w/2+r*.17,h/2-r*.7,r*.38,r*1.4);cx.restore();}
 function loop(){drawT();hlDraw();pauseMark();requestAnimationFrame(loop);}
