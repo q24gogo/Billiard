@@ -897,7 +897,8 @@ async function search0(a,tok){const pos=posOf(a),m=G.model||{},t0=now(),out=[];S
  ST.pair=pairInfo(pos);ST.lay=layoutInfo(pos);
  const add=(list,tag)=>{for(const x of list||[]){if(!x||!x.success||!noKiss(x,pos))continue;if(!x.cls){try{x.cls=P.classify(x);}catch(e){x.cls={id:'unknown'};}}if(tag)x[tag]=true;out.push(x);}};
  // ① 두 적구가 붙어 있으면 선쿠션 3뱅크부터(가장 우선)
- if(ST.pair.adj){const pb=await runGen(pairBankSweep(pos,m,t0+(ST.pair.big?1000:700)),tok);if(tok!==ST.tok||!pb)return null;add(pb,'pairBank');}
+ if(ST.pair.adj){const ps=await runGen(pairSeeds(pos,m,t0+500),tok);if(tok!==ST.tok||!ps)return null;add(ps,'pairBank');
+  const pb=await runGen(pairBankSweep(pos,m,t0+(ST.pair.big?1000:750)),tok);if(tok!==ST.tok||!pb)return null;add(pb,'pairBank');}
  // ② 사람이 치는 기본 샷(두께·당점·세기 훑기) + 1쿠션 빈쿠션
  const sw=await runGen(humanSweep(pos,m,t0+1500),tok);if(tok!==ST.tok||!sw)return null;add(sw,'sweep');
  // ③ 기본 샷이 적을 때만 기존 탐색으로 보충
@@ -935,6 +936,20 @@ function layoutInfo(pos){const D=2*P.R,R0=P.R,g=(a,b)=>Math.hypot(a.x-b.x,a.y-b.
 /* 두 적구 인접 판단: 사이 간격(가장자리끼리)이 공 지름 2개 이하면 인접, 1.5개 이하면 '붙음' */
 function pairInfo(pos){const D=2*P.R,g=Math.hypot(pos[1].x-pos[2].x,pos[1].y-pos[2].y)-D;return {gap:g,balls:g/D,adj:g<=2.5*D,strong:g<=2.0*D,big:g<=1.5*D};}
 /* 두 적구 인접: 쿠션을 먼저 돌아 두 공을 한꺼번에 노리는 길. 각도를 8°→4°→2°→1° 간격으로 촘촘하게 좁혀 가며, 시간이 다 되면 멈춘다 */
+/* 3뱅크 정석: 수구가 두 적구를 잇는 선의 법선 방향으로, 두 공 사이(가운데)를 향해 들어오게 한다.
+   두 적구 가운데 점을 쿠션에 비춘 상(像)으로 쿠션 3개 순서마다 겨냥 각을 구하고(회전형 순서 먼저), 그 주변을 물리 계산으로 다듬는다 */
+function pairApproach(x,pos){const ev=x.events||[],i=ev.findIndex(e=>e.type==='ball');if(i<1)return null;const prev=ev[i-1],hit=ev[i];
+ const vx=hit.x-prev.x,vy=hit.y-prev.y,L=Math.hypot(vx,vy)||1,px=pos[2].x-pos[1].x,py=pos[2].y-pos[1].y,PL=Math.hypot(px,py)||1;
+ const cos=Math.abs((vx*px+vy*py)/(L*PL)),dev=90-Math.acos(Math.min(1,cos))*180/Math.PI;     // 0° = 법선 방향
+ const mx=(pos[1].x+pos[2].x)/2,my=(pos[1].y+pos[2].y)/2,dm=Math.abs((mx-prev.x)*vy-(my-prev.y)*vx)/L; // 가운데 점과 진입선 거리
+ return {dev,dm};}
+function* pairSeeds(pos,m,until){const out=[],R0=P.R,mx=(pos[1].x+pos[2].x)/2,my=(pos[1].y+pos[2].y)/2,ref=(p,r)=>r===0?{x:2*R0-p.x,y:p.y}:r===1?{x:2*(W-R0)-p.x,y:p.y}:r===2?{x:p.x,y:2*R0-p.y}:{x:p.x,y:2*(H-R0)-p.y};
+ const N=[2,1,3,0];const seqs=[];for(let a=0;a<4;a++)for(let b=0;b<4;b++)for(let c=0;c<4;c++){if(a===b||b===c)continue;const code=[RNUM[a],RNUM[b],RNUM[c]],d1=((code[1]-code[0])%4+4)%4,d2=((code[2]-code[1])%4+4)%4,rot=(d1===1&&d2===1)||(d1===3&&d2===3);seqs.push({r:[a,b,c],rot});}
+ seqs.sort((p,q)=>q.rot-p.rot);
+ for(const sq of seqs){if(now()>until)break;let img={x:mx,y:my};for(let k=2;k>=0;k--)img=ref(img,sq.r[k]);const base=Math.atan2(img.y-pos[0].y,img.x-pos[0].x);
+  for(let i=0;i<=12;i++)for(const sg of i?[-1,1]:[1]){const ang=base+sg*i*.12*Math.PI/180;for(const [speed,tipX] of [[3.0,0],[3.0,.2],[3.0,-.2],[2.4,0],[3.6,0]]){const r=P.simulate(pos,{angle:ang,speed,tipX,tipY:.2},{maxC:5,dt:.016,model:m});
+    const fb=r.events.findIndex(e=>e.type==='ball');if(fb>=3){r.pairBank=true;r.seeded=true;if(r.success&&noKiss(r,pos))out.push(r);else nearKeep(r,pos);}}yield 0;}}
+ return out;}
 function* pairBankSweep(pos,m,until){const out=[],A=[],seen=new Set();for(const st of [8,4,2,1])for(let i=0;i<360;i+=st)if(!seen.has(i)){seen.add(i);A.push(i);}
  for(const [speed,tips] of [[3.0,[0]],[3.0,[.25,-.25]],[2.4,[0,.25,-.25]],[3.6,[0,.25,-.25]]])for(const i of A){if(now()>until||out.length>=40)break;const ang=i*Math.PI/180;for(const tipX of tips){const r=P.simulate(pos,{angle:ang,speed,tipX,tipY:.2},{maxC:5,dt:.016,model:m});
    const fb=r.events.findIndex(e=>e.type==='ball');if(fb>=2){r.pairBank=true;if(r.success&&noKiss(r,pos))out.push(r);else nearKeep(r,pos);}}yield 0;}
@@ -965,7 +980,8 @@ function feat(x){const ev=x.events||[],fb=ev.findIndex(e=>e.type==='ball'),kick=
 function cheapH(x){const f=x.f||(x.f=feat(x)),s=x.shot,id=x.cls&&x.cls.id,adv=LV==='adv',th=x.cut;let h=0;
  h+=(adv?.6:1.3)*Math.max(0,f.nC-3);
  const pr=ST.pair;if(pr&&pr.adj&&f.kick>=2){const ev=x.events||[],bi=ev.map((e,i)=>e.type==='ball'?i:-1).filter(i=>i>=0),together=bi.length>=2&&!ev.slice(bi[0]+1,bi[1]).some(e=>e.type==='cushion');
-  h+=f.kick>=3?(together?-.3:.4):.9;h+=pr.strong?-.2:0;}
+  h+=f.kick>=3?(together?-.3:.4):.9;h+=pr.strong?-.2:0;
+  {const ap=pairApproach(x,ordered(ST.a));if(ap){h+=Math.max(0,ap.dev-10)/12+Math.max(0,ap.dm-P.R)/(2*P.R)*.6;x.ap=ap;}}}
  else h+=f.kick*(adv?1.0:1.8)+Math.max(0,f.kick-1)*(adv?.6:1.2);
  h+=(CLS_PEN[adv?'adv':'basic'][id]??1.2);
  if(f.kick>=2){const bt=bankType(x.events);h+=(BANK_PEN[bt.type]??1)*(adv?.5:1);if(bt.type==='rot'&&x.eng==='rev')h+=.4;}
