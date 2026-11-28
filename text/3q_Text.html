@@ -879,25 +879,31 @@ function randLayout(){const R=P.R,m=R+.03;for(let tries=0;tries<500;tries++){con
   let ok=true;for(let i=0;i<3;i++)for(let j=i+1;j<3;j++)if(Math.hypot(p[i][0]-p[j][0],p[i][1]-p[j][1])<R*3.2)ok=false;if(ok)return p;}return [[.6,.7],[1.4,.4],[2.2,1.0]];}
 /* ---------- 길 찾기(Lab 코칭과 같은 탐색) ---------- */
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+/* 붙어 있는 공(프로즌)은 계산할 때만 6mm 띄운다(화면 위치는 그대로). 물리 엔진은 공이 겹치거나 맞닿은 배치를 받지 않는다 */
+function sepPos(pos){const D=2*P.R,m=D+.006,q=pos.map(p=>({x:p.x,y:p.y}));for(let it=0;it<4;it++)for(let i=0;i<3;i++)for(let j=i+1;j<3;j++){const dx=q[j].x-q[i].x,dy=q[j].y-q[i].y,d=Math.hypot(dx,dy)||1e-6;if(d<m){const ux=dx/d,uy=dy/d,need=m-d;if(i===0){q[j].x+=ux*need;q[j].y+=uy*need;}else{q[i].x-=ux*need/2;q[i].y-=uy*need/2;q[j].x+=ux*need/2;q[j].y+=uy*need/2;}}}
+ const R0=P.R+.0012;for(const p of q){p.x=Math.max(R0,Math.min(W-R0,p.x));p.y=Math.max(R0,Math.min(H-R0,p.y));}return q;}
+{const o0=ordered;ordered=a=>sepPos(o0(a));}
 function posOf(a){return ordered(a);}
 /* 키스(수구가 맞힌 공과 다시 부딪힘, 적구끼리 부딪힘)로 들어가는 길은 사람이 노리고 칠 수 없으니 추천에서 뺀다 */
 /* 키스 판단: 수구가 맞힌 공과 다시 부딪히면 항상 키스. 적구끼리 부딪힌 경우는 2적구가 거의 그 자리(반 개 이내)에서 맞을 때만 허용
    (공이 붙어 있으면 1적구가 2적구를 살짝 건드리는 것은 흔하고, 득점이 그 움직임에 기대지 않으면 사람도 노려 칠 수 있다) */
 function noKiss(r,pos){const ev=r.events||[];if(ev.some(e=>e.type==='ball'&&e.fresh===false))return false;if(!ev.some(e=>e.type==='okiss'))return true;if(!pos)return false;
  const hits=ev.filter(e=>e.type==='ball'&&e.fresh!==false),e2=hits[1];if(!e2||e2.ox==null)return false;const q=pos[e2.target];return !!q&&Math.hypot(e2.ox-q.x,e2.oy-q.y)<P.R;}
-async function runGen(g,tok){let r,t0=performance.now();do{r=g.next();if(performance.now()-t0>24){await sleep(0);if(tok!==ST.tok)return null;t0=performance.now();}}while(!r.done);return r.value||{};}
+/* ---------- 계산 시간 예산: 기기 속도와 상관없이 약 3초 안에 안내 ---------- */
+let T_END=0;const now=()=>performance.now();
+async function runGen(g,tok,until){let r,t0=performance.now();do{r=g.next();if(performance.now()-t0>24){await sleep(0);if(tok!==ST.tok)return null;if(until&&now()>until)return {};t0=performance.now();}}while(!r.done);return r.value||{};}
 async function search(a,tok){try{return await search0(a,tok);}catch(e){return [];}}
-async function search0(a,tok){const pos=posOf(a),m=G.model||{};
- const v=await runGen(P.beginnerSearch(pos,{noStance:true,model:m,steps:46,returnAll:true}),tok);if(tok!==ST.tok||!v)return null;
- const out=[...(v.routes||[]),...(v.all||[])].filter(x=>x&&x.success&&noKiss(x,pos));
- // 사람이 치는 기본 길: 두께·당점·세기를 고르게 훑어 1적구 먼저 맞는 기본 샷과 1쿠션 빈쿠션을 모두 찾는다
- const sw=await runGen(humanSweep(pos,m),tok);if(tok!==ST.tok||!sw)return null;
- for(const x of sw){try{x.cls=P.classify(x);}catch(e){x.cls={id:'unknown'};}x.sweep=true;out.push(x);}
- // 두 적구가 붙어 있으면(사이 간격 공 2개 이하) 쿠션을 먼저 돌아 두 공을 한꺼번에 노리는 빈쿠션·더블레일 길도 찾는다
- ST.pair=pairInfo(pos);ST.lay=layoutInfo(pos);if(ST.pair.adj){const pb=await runGen(pairBankSweep(pos,m),tok);if(tok!==ST.tok||!pb)return null;for(const x of pb){try{x.cls=P.classify(x);}catch(e){x.cls={id:'bank'};}x.pairBank=true;out.push(x);}}
- // Advanced 후보: 고급 탐색(대회전·되돌리기·횡단·뱅크 등 높은 단계 길)
- if(LV==='adv'){const w=await runGen(P.search(pos,3,{model:m,budgetMs:2000,maxTests:7000}),tok);if(tok!==ST.tok)return null;
-  for(const x of (w&&w.routes)||[]){if(!x.success||!noKiss(x,pos))continue;if(!x.cls){try{x.cls=P.classify(x);}catch(e){x.cls={id:'unknown'};}}x.adv=true;out.push(x);}ST.advDone=true;}else ST.advDone=false;
+async function search0(a,tok){const pos=posOf(a),m=G.model||{},t0=now(),out=[];ST.nearPool=[];
+ ST.pair=pairInfo(pos);ST.lay=layoutInfo(pos);
+ const add=(list,tag)=>{for(const x of list||[]){if(!x||!x.success||!noKiss(x,pos))continue;if(!x.cls){try{x.cls=P.classify(x);}catch(e){x.cls={id:'unknown'};}}if(tag)x[tag]=true;out.push(x);}};
+ // ① 두 적구가 붙어 있으면 선쿠션 3뱅크부터(가장 우선)
+ if(ST.pair.adj){const pb=await runGen(pairBankSweep(pos,m,t0+(ST.pair.big?1000:700)),tok);if(tok!==ST.tok||!pb)return null;add(pb,'pairBank');}
+ // ② 사람이 치는 기본 샷(두께·당점·세기 훑기) + 1쿠션 빈쿠션
+ const sw=await runGen(humanSweep(pos,m,t0+1500),tok);if(tok!==ST.tok||!sw)return null;add(sw,'sweep');
+ // ③ 기본 샷이 적을 때만 기존 탐색으로 보충
+ if(out.length<4&&now()<t0+1300){const v=await runGen(P.beginnerSearch(pos,{noStance:true,model:m,steps:20,returnAll:true}),tok,t0+1900);if(tok!==ST.tok||!v)return null;add([...(v.routes||[]),...(v.all||[])]);}
+ // ④ Advanced: 고급 탐색(남은 시간 안에서)
+ if(LV==='adv'){const w=await runGen(P.search(pos,3,{model:m,budgetMs:Math.max(300,T_END-now()-900),maxTests:5000}),tok);if(tok!==ST.tok)return null;add(w&&w.routes,'adv');ST.advDone=true;}else ST.advDone=false;
  const seen=new Set();return out.filter(x=>{const k=(x.firstTarget??'')+'|'+(x.cls&&x.cls.id)+'|'+Math.round(x.shot.angle*180/Math.PI*2)+'|'+Math.round(x.shot.tipX*10)+'|'+Math.round(x.shot.speed*3);if(seen.has(k))return false;seen.add(k);return true;});}
 /* ---------- 사람이 고르는 길 ----------
  당구 강의·컴퓨터 당구 연구에서 모은 원칙:
@@ -906,12 +912,17 @@ async function search0(a,tok){const pos=posOf(a),m=G.model||{};
  ③ 기본 기술(옆·뒤·앞돌리기, 빗겨치기)과 반 두께 근처 + 자연스러운 당점 우선
  ④ 실수 여유: 겨냥·세기·당점이 조금 어긋나도 득점하는 비율(컴퓨터 당구에서 쓰는 '잡음 넣어 여러 번 쳐 보기')
  ⑤ 짧은 길, 적당한 세기, 과한 회전·끌기·아주 얇은/두꺼운 두께 피하기 ⑥ 키스 위험 낮게 */
-function* humanSweep(pos,m){const out=[],D=2*P.R,sim=s=>P.simulate(pos,s,{maxC:5,dt:.014,model:m});
+function nearKeep(r,pos){if(r.success||!r.near||r.near.gap>.12||!noKiss(r,pos))return;const N=ST.nearPool||(ST.nearPool=[]);N.push(r);if(N.length>80){N.sort((a,b)=>a.near.gap-b.near.gap);N.length=40;}}
+/* 기본 샷 훑기: 사람이 먼저 떠올리는 조합(반 두께 근처·무회전~1팁·보통 세기)부터 치고, 시간이 다 되면 멈춘다 */
+const ORD=(a,first)=>a.slice().sort((p,q)=>Math.abs(p-first)-Math.abs(q-first));
+function* humanSweep(pos,m,until){const out=[],D=2*P.R,sim=s=>{const r=P.simulate(pos,s,{maxC:5,dt:.016,model:m});nearKeep(r,pos);return r;},C=[];
+ const TH=[.375,.25,.5,.125,.625,.75,.06,.875],TX=ORD([-.45,-.3,-.15,0,.15,.3,.45],0),TY=[.2,.4,0,-.2],SP=[2.8,2.2,3.4,3.9];
  for(const j of [1,2]){const dx=pos[j].x-pos[0].x,dy=pos[j].y-pos[0].y,dist=Math.hypot(dx,dy),base=Math.atan2(dy,dx);
-  for(const th of [.06,.125,.25,.375,.5,.625,.75,.875])for(const side of [-1,1]){const e=(1-th)*D;if(e>=dist)continue;const ang=base+side*Math.asin(Math.min(.999,e/dist));
-   for(const tipX of [-.45,-.3,-.15,0,.15,.3,.45])for(const tipY of [.4,.2,0,-.2])for(const speed of [2.2,2.8,3.4,3.9]){const r=sim({angle:ang,speed,tipX,tipY});if(r.success&&noKiss(r,pos))out.push(r);yield 0;}}}
- for(const j of [1,2])for(let rail=0;rail<4;rail++){const q=pos[j],R=P.R;let mx=q.x,my=q.y;if(rail===0)mx=2*R-q.x;else if(rail===1)mx=2*(W-R)-q.x;else if(rail===2)my=2*R-q.y;else my=2*(H-R)-q.y;
-  const base=Math.atan2(my-pos[0].y,mx-pos[0].x);for(const off of [-.03,-.015,0,.015,.03])for(const tipX of [-.25,0,.25])for(const speed of [2.6,3.2]){const r=sim({angle:base+off,speed,tipX,tipY:.25});if(r.success&&noKiss(r,pos))out.push(r);yield 0;}}
+  TH.forEach((th,a)=>{const e=(1-th)*D;if(e>=dist)return;for(const side of [-1,1]){const ang=base+side*Math.asin(Math.min(.999,e/dist));TX.forEach((tipX,b)=>TY.forEach((tipY,c)=>SP.forEach((speed,d)=>C.push({k:a+b+c*.7+d*.8,s:{angle:ang,speed,tipX,tipY}}))));}});}
+ for(const j of [1,2])for(let rail=0;rail<4;rail++){const q=pos[j],R0=P.R;let mx=q.x,my=q.y;if(rail===0)mx=2*R0-q.x;else if(rail===1)mx=2*(W-R0)-q.x;else if(rail===2)my=2*R0-q.y;else my=2*(H-R0)-q.y;
+  const base=Math.atan2(my-pos[0].y,mx-pos[0].x);[0,-.015,.015,-.03,.03].forEach((off,a)=>[0,-.25,.25].forEach((tipX,b)=>[2.6,3.2].forEach((speed,c)=>C.push({k:3+a+b+c,s:{angle:base+off,speed,tipX,tipY:.25}}))));}
+ C.sort((p,q)=>p.k-q.k);
+ for(const c of C){if(now()>until||out.length>=140)break;const r=sim(c.s);if(r.success&&noKiss(r,pos))out.push(r);yield 0;}
  return out;}
 /* ---------- 배치 판정 룰 (공 지름 D≈6.15cm, 카메라 좌표 기준) ----------
  빅볼/인접: 두 적구 표면 간 ≤1.0D(중심 간 ≤2.0D) → 빅볼, ≤2.0D → 인접
@@ -923,8 +934,11 @@ function layoutInfo(pos){const D=2*P.R,R0=P.R,g=(a,b)=>Math.hypot(a.x-b.x,a.y-b.
  return o;}
 /* 두 적구 인접 판단: 사이 간격(가장자리끼리)이 공 지름 2개 이하면 인접, 1.5개 이하면 '붙음' */
 function pairInfo(pos){const D=2*P.R,g=Math.hypot(pos[1].x-pos[2].x,pos[1].y-pos[2].y)-D;return {gap:g,balls:g/D,adj:g<=2*D,strong:g<=1.5*D,big:g<=1.0*D};}
-function* pairBankSweep(pos,m){const out=[];for(let i=0;i<720;i++){const ang=i*Math.PI/360;for(const tipX of [-.25,0,.25])for(const speed of [2.4,3.0,3.6]){const r=P.simulate(pos,{angle:ang,speed,tipX,tipY:.2},{maxC:5,dt:.014,model:m});
-   if(r.success&&noKiss(r,pos)){const ev=r.events,fb=ev.findIndex(e=>e.type==='ball');if(fb>=2)out.push(r);}yield 0;}}return out;}
+/* 두 적구 인접: 쿠션을 먼저 돌아 두 공을 한꺼번에 노리는 길. 각도를 8°→4°→2°→1° 간격으로 촘촘하게 좁혀 가며, 시간이 다 되면 멈춘다 */
+function* pairBankSweep(pos,m,until){const out=[],A=[],seen=new Set();for(const st of [8,4,2,1])for(let i=0;i<360;i+=st)if(!seen.has(i)){seen.add(i);A.push(i);}
+ for(const [speed,tips] of [[3.0,[0]],[3.0,[.25,-.25]],[2.4,[0,.25,-.25]],[3.6,[0,.25,-.25]]])for(const i of A){if(now()>until||out.length>=40)break;const ang=i*Math.PI/180;for(const tipX of tips){const r=P.simulate(pos,{angle:ang,speed,tipX,tipY:.2},{maxC:5,dt:.016,model:m});
+   const fb=r.events.findIndex(e=>e.type==='ball');if(fb>=2){r.pairBank=true;if(r.success&&noKiss(r,pos))out.push(r);else nearKeep(r,pos);}}yield 0;}
+ return out;}
 /* ---------- 뱅크샷(선쿠션) 유형: 1적구 전 쿠션 순서 코드(1=위, 2=오른쪽, 3=아래, 4=왼쪽) ----------
  회전형(123·321·214·234·412·432 …: 한 방향으로 이웃 쿠션을 감아 돎) → 1순위
  횡단형(131·313·242·424: 마주 보는 쿠션 왕복) → 2순위
@@ -936,7 +950,7 @@ function bankType(ev){ev=ev||[];const fb=ev.findIndex(e=>e.type==='ball'),cs=(fb
  let type='other';if(st.every(d=>d===1)||st.every(d=>d===-1))type='rot';else if(st.every(d=>d===2))type='cross';else if(st.length>=2&&Math.abs(st[0])===1&&st[1]===-st[0])type='rev';else if(st.length===1)type=st[0]===2?'cross':'rot';
  return {n,code,type};}
 const BANK_KO={rot:'외곽 회전형',cross:'횡단형',rev:'리버스(되돌리기형)',other:'변형'};
-const BANK_PEN={rot:0,cross:.6,other:1.0,rev:1.3};
+const BANK_PEN={rot:0,cross:1.6,other:2.0,rev:2.6}; // 회전형이 실수 여유에서 크게 뒤질 때만 횡단·리버스
 function shotName(x){const id=x&&x.cls&&x.cls.id,b=bankType(x&&x.events);if(b.n>=2){const t=b.n>=3?'쓰리뱅크':'투뱅크';return (b.type==='rev'?'리버스':BANK_KO[b.type])+' '+t;}return SHOT_KO[id]||'샷';}
 const CLS_PEN={basic:{side:0,back:0,front:0,thin:.5,bank:0,grand:.5,crossS:1.0,crossL:1.0,revS:1.0,revL:1.0,special:1.5,unknown:1.3},
  adv:{grand:-.4,revS:-.4,revL:-.4,crossS:-.3,crossL:-.3,bank:-.2,thin:0,side:.15,back:.15,front:.15,special:.6,unknown:.8}};
@@ -969,34 +983,49 @@ function cheapH(x){const f=x.f||(x.f=feat(x)),s=x.shot,id=x.cls&&x.cls.id,adv=LV
 function centerShot(a,shot){const pos=ordered(a),m=G.model||{},ok=s=>{const r=P.simulate(pos,s,{maxC:6,dt:.01,model:m});return r.success&&noKiss(r,pos);};
  const run=(vals,mk)=>{const f=vals.map(v=>ok(mk(v)));let i0=vals.findIndex(v=>v===0||Math.abs(v-1)<1e-9);if(i0<0)i0=Math.floor(vals.length/2);if(!f[i0]){let best=-1,bd=1e9;f.forEach((g,i)=>{if(g&&Math.abs(i-i0)<bd){bd=Math.abs(i-i0);best=i;}});if(best<0)return null;i0=best;}
   let lo=i0,hi=i0;while(lo>0&&f[lo-1])lo--;while(hi<vals.length-1&&f[hi+1])hi++;return {v:vals[Math.round((lo+hi)/2)],w:hi-lo+1};};
- const D=Math.PI/180,A=[];for(let d=-.6;d<=.6001;d+=.05)A.push(+d.toFixed(2));
+ const D=Math.PI/180,A=[];for(let d=-.4;d<=.4001;d+=.05)A.push(+d.toFixed(2));
  const ra=run(A,d=>({...shot,angle:shot.angle+d*D}));if(!ra)return null;let s1={...shot,angle:shot.angle+ra.v*D};
- const K=[.8,.85,.9,.95,1,1.05,1.1,1.15,1.2,1.25];const rk=run(K,k=>({...s1,speed:Math.min(5.5,s1.speed*k)}));if(rk){const sp=s1.speed*rk.v;s1={...s1,speed:Math.min(5.5,sp>3.4&&s1.speed<=3.4?Math.max(s1.speed,3.4):sp)};}
- const T=[-.12,-.08,-.04,0,.04,.08,.12];const rt=run(T,t=>({...s1,tipX:clamp((s1.tipX||0)+t,-.5,.5)}));if(rt)s1={...s1,tipX:clamp((s1.tipX||0)+rt.v,-.5,.5)};
+ const K=[.85,.9,.95,1,1.05,1.1,1.15];const rk=run(K,k=>({...s1,speed:Math.min(5.5,s1.speed*k)}));if(rk){const sp=s1.speed*rk.v;s1={...s1,speed:Math.min(5.5,sp>3.4&&s1.speed<=3.4?Math.max(s1.speed,3.4):sp)};}
+ const T=[-.08,-.04,0,.04,.08];const rt=run(T,t=>({...s1,tipX:clamp((s1.tipX||0)+t,-.5,.5)}));if(rt)s1={...s1,tipX:clamp((s1.tipX||0)+rt.v,-.5,.5)};
  const r=P.simulate(pos,s1,{maxC:6,dt:.005,model:m});if(!r.success||!noKiss(r,pos))return null;return {shot:s1,r,aw:ra.w*.05};}
 /* 실수 여유 + 키스: 겨냥 ±0.1°(두께 약 1/16), 세기 ±7%, 당점 ±0.04 로 27번 쳐서 득점 비율과 키스 비율 */
-function robustOf(a,shot){const pos=ordered(a),m=G.model||{};let n=0,ok=0,k=0,c1=0,c2=0;
- for(const da of [-.1,0,.1])for(const ks of [.93,1,1.07])for(const dt of [-.04,0,.04]){const s={...shot,angle:shot.angle+da*Math.PI/180,speed:shot.speed*ks,tipX:clamp((shot.tipX||0)+dt,-.5,.5)};
+function robustOf(a,shot,N=27){const pos=ordered(a),m=G.model||{};let n=0,ok=0,k=0,c1=0,c2=0;const DT=N<=9?[0]:[-.04,0,.04];
+ for(const da of [-.1,0,.1])for(const ks of [.93,1,1.07])for(const dt of DT){const s={...shot,angle:shot.angle+da*Math.PI/180,speed:shot.speed*ks,tipX:clamp((shot.tipX||0)+dt,-.5,.5)};
   const r=P.simulate(pos,s,{maxC:6,dt:.01,model:m});n++;const nk=noKiss(r,pos);if(r.success&&nk)ok++;const ev=r.events||[],re=ev.some(e=>e.type==='ball'&&!e.fresh),okk=!nk&&!re;if(re||okk){k++;if(re)c1++;else c2++;}}
  return {s:ok/n,p:k/n,kind:c1>=c2?'cue':'obj'};}
 function libRoute(a){ // 비슷한 배치의 실제 득점 기록 → 지금 배치에서 각도를 다듬어 득점하는 길
  const pos=posOf(a),c=[];for(const x of LIB){if(!x.score||!x.pos)continue;for(const sw of [0,1]){const q=sw?[x.pos[0],x.pos[2],x.pos[1]]:x.pos;const d=Math.hypot(q[0][0]-pos[0].x,q[0][1]-pos[0].y)+Math.hypot(q[1][0]-pos[1].x,q[1][1]-pos[1].y)+Math.hypot(q[2][0]-pos[2].x,q[2][1]-pos[2].y);if(d<.5)c.push({x,d,sw});}}
- c.sort((p,q)=>p.d-q.d);for(const {x,d} of c.slice(0,4)){const b=x.shot;for(let i=0;i<=40;i++)for(const sg of i?[-1,1]:[1]){const s={...b,angle:b.angle+sg*i*.1*Math.PI/180};const r=P.simulate(pos,s,{maxC:6,dt:.005,model:G.model||{}});
+ c.sort((p,q)=>p.d-q.d);const lu=now()+250;for(const {x,d} of c.slice(0,2)){if(now()>lu)break;const b=x.shot;for(let i=0;i<=40;i++)for(const sg of i?[-1,1]:[1]){const s={...b,angle:b.angle+sg*i*.1*Math.PI/180};const r=P.simulate(pos,s,{maxC:6,dt:.005,model:G.model||{}});
    if(r.success&&noKiss(r,pos)){let id='unknown';try{id=P.classify(r).id;}catch(e){}return {shot:s,success:true,cut:r.cut,events:r.events,cls:{id},prob:.9,lib:{g:x.g,d,type:x.type}};}}}
  return null;}
-async function analyse(){const a=ST.a;if(!a)return;const tok=++ST.tok;stopSay();ST.anim=null;ST.fail=null;ST.mode='idle';a.cue=CUE;simCache.clear();a.k=(a.k|0)+1;
+/* 득점 길이 하나도 없을 때: ① 아깝게 빗나간 길 주변(겨냥 ±1°, 세기 ±10%, 옆 당점 ±0.1)을 촘촘히 다시 쳐서 득점 길을 구하고
+   ② 그래도 없으면 우선순위가 가장 높고 가장 가까운 길(2적구를 가장 아깝게 스치는 길)을 '근사 길'로 안내한다.
+   두 적구가 맞닿아 있으면(간격 0.25D 이하) 무조건 선쿠션 3뱅크 길을 먼저 본다 */
+function nearOrder(a){const N=(ST.nearPool||[]).slice(),fz=ST.pair&&ST.pair.gap<=.25*2*P.R;
+ const k=r=>{const ev=r.events||[],fb=ev.findIndex(e=>e.type==='ball'),kick=(fb<0?ev:ev.slice(0,fb)).filter(e=>e.type==='cushion').length;let c=0;try{c=CLS_PEN.basic[P.classify(r).id]??1;}catch(e){c=1;}return (fz?(kick>=3?0:5):kick*1.5)+c+r.near.gap*25;};
+ return N.sort((p,q)=>k(p)-k(q));}
+async function rescue(a,tok){const pos=ordered(a),m=G.model||{},D=Math.PI/180,until=now()+900;let n=0;
+ for(const r0 of nearOrder(a).slice(0,10)){const b=r0.shot;for(let i=0;i<=20;i++)for(const sg of i?[-1,1]:[1])for(const ks of [1,.95,1.05,.9,1.1])for(const dt of [0,-.1,.1]){const s={...b,angle:b.angle+sg*i*.05*D,speed:b.speed*ks,tipX:clamp((b.tipX||0)+dt,-.5,.5)};
+   const r=P.simulate(pos,s,{maxC:6,dt:.005,model:m});if(r.success&&noKiss(r,pos)){try{r.cls=P.classify(r);}catch(e){r.cls={id:'bank'};}r.pairBank=r0.pairBank;r.rescued=true;return r;}
+   if(++n%150===0){await sleep(0);if(tok!==ST.tok||now()>until)return null;}}}
+ return null;}
+function fallbackRoute(a){const r0=nearOrder(a)[0];if(!r0)return null;const r=P.simulate(ordered(a),r0.shot,{maxC:6,dt:.005,model:G.model||{}});try{r.cls=P.classify(r);}catch(e){r.cls={id:'unknown'};}
+ r.approx=true;r.gap=(r.near||r0.near).gap;r.pairBank=r0.pairBank;r.rob=0;const q=robustOf(a,r.shot);r.kiss=q.p;r.kissK=q.kind;r.rob=q.s;return r;}
+async function analyse(){const a=ST.a;if(!a)return;const tok=++ST.tok;T_END=now()+2800;stopSay();ST.anim=null;ST.fail=null;ST.mode='idle';a.cue=CUE;simCache.clear();a.k=(a.k|0)+1;
  $('busy').hidden=false;$('alts').innerHTML='';setMsg('',`배치 ${ST.n} · 수구 ${BALL_KO[CUE]}`,'길을 찾고 있어요…',null);
  const rs=await search(a,tok);if(tok!==ST.tok)return;const lr=libRoute(a);$('busy').hidden=true;
  ST.all=(lr?[lr]:[]).concat(rs||[]);const pick=pickRoutes();
- if(!pick.length){setMsg('fail',`배치 ${ST.n}`,'이 배치는 득점 길을 찾지 못했어요. 🎲 새 배치를 눌러 주세요.',null);say('이 배치는 득점 길을 찾지 못했어요.');if(ST.auto){await sleep(1500);if(tok===ST.tok)newLayout();}return;}
+ if(!pick.length){$('busy').hidden=false;setMsg('',`배치 ${ST.n} · 수구 ${BALL_KO[CUE]}`,'가장 가까운 길을 다듬고 있어요…',null);
+  const rr=await rescue(a,tok);if(tok!==ST.tok)return;$('busy').hidden=true;
+  if(rr){ST.all=[rr];pickRoutes();}
+  if(!ST.routes.length){const fb=fallbackRoute(a);if(!fb){setMsg('fail',`배치 ${ST.n}`,'이 배치는 길을 계산하지 못했어요. 🎲 새 배치를 눌러 주세요.',null);say('이 배치는 길을 계산하지 못했어요.');if(ST.auto){await sleep(1500);if(tok===ST.tok)newLayout();}return;}
+   ST.routes=[fb];ST.sel=0;}}
  await playRoute(0,tok);}
 function selRoute(i,quiet){const a=ST.a,r=ST.routes[i];if(!r)return;ST.sel=i;ST.fail=null;ST.mode='coach';ST.anim=null;a.sh={rec:pack(r.shot,r.cls&&r.cls.id==='bank'?null:r.cut)};a.r=r;a._route=null;a.rest=r.rest||null;simCache.clear();a.k++;
  $('alts').innerHTML=ST.routes.length>1?'<span class="muted small">다른 길:</span>'+ST.routes.map((x,k)=>`<button data-k="${k}" class="${k===i?'on':''}">${esc(shotName(x))}${x.lib?' · 실제 기록':''}${x.altKiss?' · 키스 회피':''}${x.kiss!=null?' · 키스 '+Math.round(x.kiss*100)+'%':''}</button>`).join(''):'';
  coachMsg(quiet);}
 $('alts').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;const tok=++ST.tok;stopSay();playRoute(+b.dataset.k,tok);};
 /* ---------- Basic / Advanced 추천 ---------- */
-const BASIC_CLS={back:1,side:1,front:1,thin:.7};
-const ADV_CLS={grand:1,revS:1,revL:1,crossS:.9,crossL:.9,bank:1,special:.6,thin:.3};
 function restOf(a,shot){const pos=ordered(a);const r=P.simulate(pos,shot,{record:true,dt:.01,maxC:40,maxT:25,full:true,model:G.model||{}});const f=r.frames&&r.frames[r.frames.length-1];if(!f)return null;
  const o=[0,1,2].filter(b=>b!==a.cue),out=[];f.p.forEach((q,k)=>{out[k===0?a.cue:o[k-1]]=[q.x,q.y];});return out;}
 function posQ(a,rest){if(!rest)return 0;const c=rest[a.cue],o=[0,1,2].filter(b=>b!==a.cue).map(b=>rest[b]),d12=Math.hypot(o[0][0]-o[1][0],o[0][1]-o[1][1]),dc=Math.min(...o.map(q=>Math.hypot(q[0]-c[0],q[1]-c[1])));
@@ -1026,20 +1055,18 @@ function stdPen(x){const S=STD[x.cls&&x.cls.id];if(!S||(x.f&&x.f.kick))return 0;
  p+=Math.max(0,S.pw[0]-pw,pw-S.pw[1])*.15;return Math.min(1.5,p);}
 function humanH(x){return cheapH(x)+stdPen(x)+3.2*(1-(x.rob??.5))+1.5*(x.kiss||0)+(LV!=='adv'&&x.eng==='rev'?.4:0)-(LV==='adv'?1.5*(x.pq||0):0);}
 function lvScore(x){return -humanH(x);}
-/* 키스 확률: 추천샷을 조금씩 흔들어(겨냥 ±0.6°, 세기 ±8%, 당점 ±0.03) 쳐 보고 득점 전에 공끼리 다시 부딪히는 비율 */
-function kissOf(a,shot){const pos=ordered(a),m=G.model||{};let n=0,k=0,c1=0,c2=0;
- for(const da of [-.6,0,.6])for(const ks of [.92,1,1.08])for(const dt of [-.03,0,.03]){const s={...shot,angle:shot.angle+da*Math.PI/180,speed:shot.speed*ks,tipX:clamp((shot.tipX||0)+dt,-.5,.5)};
-  const r=P.simulate(pos,s,{maxC:6,dt:.01,model:m});n++;const ev=r.events||[],re=ev.some(e=>e.type==='ball'&&!e.fresh),ok=ev.some(e=>e.type==='okiss');if(re||ok){k++;if(re)c1++;else c2++;}}
- return {p:k/n,kind:c1>=c2?'cue':'obj'};}
 const kissWord=p=>p<.1?'낮음':p<.3?'주의':'높음';
-function pickRoutes(){const a=ST.a;
- // 값싼 기준으로 먼저 추리고(상위 30개), 화면용 정밀 시뮬레이션·실수 여유·키스는 그 안에서만 계산
- const srt=ST.all.slice().sort((p,q)=>cheapH(p)-cheapH(q)),pre=srt.slice(0,22);{const byC={};for(const x of srt.slice(22)){const id=(x.cls&&x.cls.id)+(x.pairBank?'P':'');if((byC[id]=(byC[id]||0)+1)<=3&&pre.length<34)pre.push(x);}}
- for(const x of pre){if(x.clean==null){const r=P.simulate(ordered(a),x.shot,{maxC:6,dt:.005,model:G.model||{}});x.clean=!!r.success&&noKiss(r,ordered(a));if(x.clean){x.events=r.events;x.rule=r.rule;x.pathLength=r.pathLength;x.cut=r.cut;x.firstTarget=r.firstTarget;x.f=null;try{x.cls=P.classify(r);}catch(e){}}}}
+function pickRoutes(){const a=ST.a,pos=ordered(a),m=G.model||{};
+ // 값싼 기준으로 20개 추림 → 화면용 정밀 확인 → 빠른 실수 여유(9번) → 상위 6개만 득점 구간 가운데 맞춤·정밀 실수 여유(27번)·회전 판정
+ const srt=ST.all.slice().sort((p,q)=>cheapH(p)-cheapH(q)),pre=srt.slice(0,16);{const byC={};for(const x of srt.slice(16)){const id=(x.cls&&x.cls.id)+(x.pairBank?'P':'');if((byC[id]=(byC[id]||0)+1)<=2&&pre.length<24)pre.push(x);}}
+ let cleanN=0;for(const x of pre){if(x.clean==null){if(cleanN>=6&&now()>T_END-700){x.clean=false;continue;}cleanN++;const r=P.simulate(pos,x.shot,{maxC:6,dt:.005,model:m});x.clean=!!r.success&&noKiss(r,pos);if(x.clean){x.events=r.events;x.rule=r.rule;x.pathLength=r.pathLength;x.cut=r.cut;x.firstTarget=r.firstTarget;x.f=null;try{x.cls=P.classify(r);}catch(e){}}}}
  ST.all=pre.filter(x=>x.clean);
- ST.all.sort((p,q)=>cheapH(p)-cheapH(q));
- ST.all.forEach((x,i)=>{if(i<14&&!x.centered){x.centered=true;const c=centerShot(a,x.shot);if(c){x.shot=c.shot;x.aw=c.aw;x.events=c.r.events;x.rule=c.r.rule;x.pathLength=c.r.pathLength;x.cut=c.r.cut;x.firstTarget=c.r.firstTarget;x.f=null;try{x.cls=P.classify(c.r);}catch(e){}}}});
- for(const x of ST.all){if(x.rob==null){const q=robustOf(a,x.shot);x.rob=q.s;x.kiss=q.p;x.kissK=q.kind;}if(x.eng==null)x.eng=englishType(a,x.shot);}if(LV==='adv')for(const x of ST.all){if(x.pq==null){x.rest=restOf(a,x.shot);x.pq=posQ(a,x.rest);}}
+ ST.all.sort((p,q)=>cheapH(p)-cheapH(q));ST.all.forEach((x,i)=>{if(x.rob==null&&x.rob9==null&&(i<4||now()<T_END-500))x.rob9=robustOf(a,x.shot,9).s;});
+ const H9=x=>cheapH(x)+stdPen(x)+3.2*(1-(x.rob??x.rob9??.5));ST.all.sort((p,q)=>H9(p)-H9(q));
+ ST.all.forEach((x,i)=>{if(i>=8||(i>=2&&now()>T_END))return;if(!x.centered&&(i<1||now()<T_END-250)){x.centered=true;const c=centerShot(a,x.shot);if(c){x.shot=c.shot;x.aw=c.aw;x.events=c.r.events;x.rule=c.r.rule;x.pathLength=c.r.pathLength;x.cut=c.r.cut;x.firstTarget=c.r.firstTarget;x.f=null;try{x.cls=P.classify(c.r);}catch(e){}}}
+  if(x.rob==null){const q=robustOf(a,x.shot,i<3||now()<T_END-150?27:9);x.rob=q.s;x.kiss=q.p;x.kissK=q.kind;}if(x.eng==null&&(i<3||now()<T_END))x.eng=englishType(a,x.shot);});
+ for(const x of ST.all){if(x.rob==null){x.rob=x.rob9;x.kiss=x.kiss??0;}}
+ if(LV==='adv')for(const x of ST.all.slice(0,8)){if(x.pq==null){x.rest=restOf(a,x.shot);x.pq=posQ(a,x.rest);}}
  const rs=ST.all.slice().sort((p,q)=>lvScore(q)-lvScore(p)),seen=new Set(),pick=[];
  for(const x of rs){const id=(x.cls&&x.cls.id)+(x.lib?'L':'');if(seen.has(id))continue;seen.add(id);pick.push(x);if(pick.length>=4)break;}
  // 3순위 키스 우회: 1순위 길의 키스 위험이 높으면(30%↑) 키스가 가장 적은 길을 대안으로 꼭 넣는다
@@ -1070,9 +1097,10 @@ function rows(a,kind){const R=route(a,kind),sh=a.sh[kind],tn=shotName(a.r);
  return [['샷 기술',kind==='rec'?tn:(ST.fail?ST.fail.label:'')],['겨냥 · 두께',aimT],['당점',sh.tip],['세기',sh.pwKo],['궤적 · 쿠션 포인트 (장쿠션 왼쪽부터 0~8 · 단쿠션 위부터 0~4)',R.cus.slice(0,4).map((c,i)=>`${'①②③④'[i]} ${cusTxt(c)}`).join('  →  ')||'—','wide']];}
 function coachSegs(a){const R=route(a,'rec'),sh=a.sh.rec,tn=shotName(a.r),p=[],q=t=>p.push({t});const ck=condKey();if(ck!=='std')p.push({t:`테이블이 ${COND[ck].ko}이에요. ${COND[ck].tip}.`,cond:true});
  q(`${BALL_KO[a.cue]}${roOf(BALL_KO[a.cue])} 칩니다. 이 배치는 ${tn}${roOf(tn)} 치세요.`);
+ if(a.r.approx){const g=(a.r.gap||0)/(2*P.R);q(`정확히 득점되는 길은 계산되지 않아 가장 가까운 길을 안내해요. 2적구를 ${g<.25?'종이 한 장':g<.65?'공 반 개':g<1.2?'공 한 개':'공 '+g.toFixed(1)+'개'} 차이로 스치는 길이라 두께와 당점을 조금씩 조정하며 쳐 보세요.`);}
  {const bt=bankType(R.ev);if(bt.n>=3){const hasRot=ST.routes.some(y=>y!==a.r&&bankType(y.events).n>=3&&bankType(y.events).type==='rot');
    q(bt.type==='rot'?`가장 무난한 외곽 회전 길이에요. 쿠션 순서는 ${bt.code.split('').join('-')}번이에요.`:`외곽 회전 각이 좁아 ${bt.type==='cross'?'횡단':bt.type==='rev'?'리버스':'변형'} 쓰리뱅크로 우회하는 것이 유리합니다. 쿠션 순서는 ${bt.code.split('').join('-')}번이에요.`);}}
- {const pr=ST.pair,kk=R.ev.findIndex(e=>e.type==='ball');if(pr&&pr.adj&&kk>=2)q(`두 적구가 공 ${pr.balls<.75?'반 개':pr.balls<1.25?'한 개':pr.balls<1.75?'한 개 반':'두 개'} 간격으로 붙어 있어, 쿠션을 먼저 ${R.ev.slice(0,kk).filter(e=>e.type==='cushion').length}번 돌아 두 공을 한꺼번에 노려요.`);}
+ {const pr=ST.pair,kk=R.ev.findIndex(e=>e.type==='ball');if(pr&&pr.adj&&kk>=2)q(`${pr.balls<.25?'두 적구가 거의 맞닿아 있어':'두 적구가 공 '+(pr.balls<.75?'반 개':pr.balls<1.25?'한 개':pr.balls<1.75?'한 개 반':'두 개')+' 간격으로 붙어 있어'}, 쿠션을 먼저 ${R.ev.slice(0,kk).filter(e=>e.type==='cushion').length}번 돌아 두 공을 한꺼번에 노려요.`);}
  if(R.kick&&R.cus[0])p.push({t:`${RAIL[R.cus[0].rail]} ${R.cus[0].pt.toFixed(1)} 포인트를 먼저 맞히고,`,hl:R.cus[0]});
  else if(R.first!=null)q(`${BALL_KO[R.first]} ${R.side==='L'?'왼쪽':'오른쪽'}을 ${frac8(R.cut)} 두께로 겨냥하고,`);
  q(`당점은 ${sh.tip}, 세기는 ${sh.pwKo}${roOf(sh.pwKo)} 치세요.`);
@@ -1111,24 +1139,11 @@ function restTxt(a){const o=[0,1,2].filter(b=>b!==a.cue).map(b=>a.rest[b]),mx=(o
  return `두 목적구가 가로 ${px}, 세로 ${py} 포인트 근처에 ${gap<6?'공 '+Math.max(1,Math.round(gap))+'개 간격으로 모이고':'약 '+(d*100/10|0)*10+'cm 떨어져 서고'} 수구는 가로 ${(a.rest[a.cue][0]/(W/8)).toFixed(1)}, 세로 ${(a.rest[a.cue][1]/(H/4)).toFixed(1)} 포인트에 서요`;}
 let HL=null;
 function coachMsg(quiet){const a=ST.a,tok=ST.tok,rw=rows(a,'rec');{const S=STD[a.r.cls&&a.r.cls.id];if(S&&!(a.r.f&&a.r.f.kick))rw.push(['표준 세팅 · 흔한 실패',`두께 ${Math.round(S.th[0]*8)}/8~${Math.round(S.th[1]*8)}/8 · 세기 ${S.pw[0]===S.pw[1]?S.pw[0]:S.pw[0]+'~'+S.pw[1]}단계 · 실패: ${S.fail}`,'wide']);}if(a.r.rob!=null)rw.splice(4,0,['실수 여유',Math.round(a.r.rob*100)+'% · '+(a.r.rob>=.7?'여유 있음':a.r.rob>=.4?'보통':'정확히 쳐야 함')]);if(a.r.kiss!=null)rw.splice(4,0,['키스 확률',Math.round(a.r.kiss*100)+'% · '+kissWord(a.r.kiss)+(a.r.kiss>=.1?(a.r.kissK==='cue'?' (수구↔1적구)':' (적구끼리)'):'')]);
- const sg=coachSegs(a);rw.unshift(['테이블 컨디션',condName()+' · '+COND[condKey()].tip]);setMsg('rec',`배치 ${ST.n} · 🎓 ${LV==='adv'?'Advanced':'Basic'} 추천샷 · 수구 ${BALL_KO[a.cue]}${a.r.lib?' · 실제 기록 기반':''}`,sg.map((x,k)=>`<span data-s="${k}" class="${x.hl?'pt':''}">${esc(x.t)}</span>`).join(' '),rw);badge('coach','🎓 '+(LV==='adv'?'Advanced':'Basic')+' · '+BALL_KO[a.cue]);
+ const sg=coachSegs(a);rw.unshift(['테이블 컨디션',condName()+' · '+COND[condKey()].tip]);setMsg('rec',`배치 ${ST.n} · 🎓 ${a.r.approx?'근사 길':(LV==='adv'?'Advanced':'Basic')+' 추천샷'} · 수구 ${BALL_KO[a.cue]}${a.r.lib?' · 실제 기록 기반':''}`,sg.map((x,k)=>`<span data-s="${k}" class="${x.hl?'pt':''}">${esc(x.t)}</span>`).join(' '),rw);badge('coach','🎓 '+(LV==='adv'?'Advanced':'Basic')+' · '+BALL_KO[a.cue]);
  if(quiet)return Promise.resolve();
  return (async()=>{for(let k=0;k<sg.length;k++){if(tok!==ST.tok)break;if(sg[k].cond&&CSAID===condKey()+'|'+CND)continue;HL=sg[k].hl||null;document.querySelectorAll('#msgT span[data-s]').forEach(e=>e.classList.toggle('on',+e.dataset.s===k));
    const sp=say(sg[k].t,{hl:!!sg[k].hl,reset:k===0,head:$('msgH').textContent});if(SAY_ON)await sp;else await sleep(PH.n>0?phEst(sg[k].t):(sg[k].hl?900:0));}
   if(tok===ST.tok)CSAID=condKey()+'|'+CND;HL=null;document.querySelectorAll('#msgT span.on').forEach(e=>e.classList.remove('on'));})();}
-function missWhy(a,r){ // 시뮬레이션 결과에서 득실 원인(현장 표현: 공 갯수 + 짧게/길게)
- const ev=r.events||[],fb=ev.find(e=>e.type==='ball');if(!fb)return '첫 공을 맞히지 못해요';
- const o2=fb.target===1?2:1,hit2=ev.find(e=>e.type==='ball'&&e.target===o2);if(hit2){const n=ev.filter(e=>e.type==='cushion'&&e.t<hit2.t).length;return `두 번째 공 전에 쿠션을 ${n}개밖에 못 타요`;}
- const cs=ev.filter(e=>e.type==='cushion');if(cs.length<3)return '쿠션을 3개 타기 전에 공이 멈춰요';
- const F=r.frames||[];if(!F.length)return '두 번째 공에 닿지 못해요';const c3=cs[2].t;let best=1e9,bp=null,rest=null;
- F.forEach(f=>{if(f.t<c3)return;const p=f.p[0],q=f.p[o2];const d=Math.hypot(p.x-q.x,p.y-q.y)-2*P.R;if(d<best){best=d;bp=p;rest=q;}});
- if(!bp)return '두 번째 공에 닿지 못해요';
- // Lab 리뷰·코칭과 같은 기준: 2적구에서 테이블 중앙 쪽(안쪽)으로 지나가면 앞쪽(짧게), 쿠션 쪽(바깥쪽)이면 뒤쪽(길게)
- let side=null;{const ix=1.42-rest.x,iy=.71-rest.y,il=Math.hypot(ix,iy),ox=bp.x-rest.x,oy=bp.y-rest.y,ol=Math.hypot(ox,oy);if(il>=.12&&ol>1e-6){const c=(ox*ix+oy*iy)/(ol*il);if(Math.abs(c)>=.3)side=c>0?'short':'long';}}
- const r2=Math.max(0,best)/.0615,amt=r2<.25?'종이 한 장 차이로':r2<.65?'공 반 개 차이로':r2<1.2?'공 한 개 차이로':`공 ${r2.toFixed(1)}개 차이로`,ak=r2<.25?'아깝게 ':'';
- if(side==='short')return `두 번째 공 앞쪽으로 ${ak}${amt} 짧게 빠져요`;
- if(side==='long')return `두 번째 공 뒤쪽으로 ${ak}${amt} 길게 흘러요`;
- return r2<.25?'두 번째 공을 아깝게 종이 한 장 차이로 스쳐 지나가요':r2<.65?'두 번째 공을 공 반 개 차이로 빗겨가요':r2<1.2?'두 번째 공에서 공 한 개 차이로 벗어나요':`두 번째 공에서 공 ${r2.toFixed(1)}개 차이로 크게 벗어나요`;}
 /* ---------- 치기(애니메이션) ---------- */
 function strike(a,kind,tok){const tr=(SH=a.k,track(a,kind)),ang=a.sh[kind].s[0],PRE=.8,STK=.75,ST0=PRE+STK,t0=performance.now();
  const el0=()=>(performance.now()-t0)/1000,el=()=>Math.max(0,el0()-PRE);
@@ -1248,7 +1263,7 @@ $('phC').onchange=()=>{PH.tid=($('phC').value.trim().toUpperCase().replace(/[^A-
 $('phB').onchange=()=>{PH.url=$('phB').value.trim()||PH_DEMO;try{localStorage.setItem('3q-text-broker',PH.url);}catch(e){}phConnect();phShow();};
 setInterval(phCount,5000);
 if(PH.on)phConnect();
-window.TXT={ST,newLayout,analyse,shootRec,missWhy,route,setLv,setTrj,restOf,posQ,P,G,get LIB(){return LIB;},get LV(){return LV;}};
+window.TXT={ST,newLayout,analyse,shootRec,route,setLv,setTrj,restOf,posQ,P,G,get LIB(){return LIB;},get LV(){return LV;}};
 </script>
 <script>/* 설치(홈 화면 바로가기) */if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 let INSTALL_EV=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EV=e;const b=document.getElementById('bInstall');if(b)b.hidden=false;});addEventListener('appinstalled',()=>{const b=document.getElementById('bInstall');if(b)b.hidden=true;});
