@@ -1053,7 +1053,7 @@ async function rescue(a,tok){const pos=ordered(a),m=G.model||{},D=Math.PI/180,un
  return null;}
 function fallbackRoute(a){const r0=nearOrder(a)[0];if(!r0)return null;const r=P.simulate(ordered(a),r0.shot,{maxC:6,dt:.005,model:G.model||{}});try{r.cls=P.classify(r);}catch(e){r.cls={id:'unknown'};}
  r.approx=true;r.gap=(r.near||r0.near).gap;r.pairBank=r0.pairBank;r.rob=0;const q=robustOf(a,r.shot);r.kiss=q.p;r.kissK=q.kind;r.rob=q.s;return r;}
-async function analyse(){const a=ST.a;if(!a)return;const tok=++ST.tok;T_END=now()+2800;stopSay();ST.anim=null;ST.fail=null;ST.mode='idle';a.cue=CUE;simCache.clear();a.k=(a.k|0)+1;
+async function analyse(){const a=ST.a;if(!a)return;a.hold=null;const tok=++ST.tok;T_END=now()+2800;stopSay();ST.anim=null;ST.fail=null;ST.mode='idle';a.cue=CUE;simCache.clear();a.k=(a.k|0)+1;
  $('busy').hidden=false;$('alts').innerHTML='';setMsg('',`배치 ${ST.n} · 수구 ${BALL_KO[CUE]}`,'길을 찾고 있어요…',null);
  const rs=await search(a,tok);if(tok!==ST.tok)return;const lr=libRoute(a);$('busy').hidden=true;
  ST.all=(lr?[lr]:[]).concat(rs||[]);const pick=pickRoutes();
@@ -1063,7 +1063,7 @@ async function analyse(){const a=ST.a;if(!a)return;const tok=++ST.tok;T_END=now(
   if(!ST.routes.length){const fb=fallbackRoute(a);if(!fb){setMsg('fail',`배치 ${ST.n}`,'이 배치는 길을 계산하지 못했어요. 🎲 새 배치를 눌러 주세요.',null);say('이 배치는 길을 계산하지 못했어요.');if(ST.auto){await sleep(1500);if(tok===ST.tok)newLayout();}return;}
    ST.routes=[fb];ST.sel=0;}}
  await playRoute(0,tok);}
-function selRoute(i,quiet){const a=ST.a,r=ST.routes[i];if(!r)return;ST.sel=i;ST.fail=null;ST.mode='coach';ST.anim=null;a.sh={rec:pack(r.shot,r.cls&&r.cls.id==='bank'?null:r.cut)};a.r=r;a._route=null;a.rest=r.rest||null;simCache.clear();a.k++;
+function selRoute(i,quiet){const a=ST.a,r=ST.routes[i];if(!r)return;ST.sel=i;ST.fail=null;ST.mode='coach';ST.anim=null;a.hold=null;a.sh={rec:pack(r.shot,r.cls&&r.cls.id==='bank'?null:r.cut)};a.r=r;a._route=null;a.rest=r.rest||null;simCache.clear();a.k++;
  $('alts').innerHTML=ST.routes.length>1?'<span class="muted small">다른 길:</span>'+ST.routes.map((x,k)=>`<button data-k="${k}" class="${k===i?'on':''}">${esc(shotName(x))}${x.lib?' · 실제 기록':''}${x.altKiss?' · 키스 회피':''}${x.kiss!=null?' · 키스 '+Math.round(x.kiss*100)+'%':''}</button>`).join(''):'';
  coachMsg(quiet);}
 $('alts').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;const tok=++ST.tok;stopSay();playRoute(+b.dataset.k,tok);};
@@ -1211,7 +1211,7 @@ async function newLayout(){setPause(false);stopSay();ST.tok++;ST.n++;kpis();cons
 $('bNew').onclick=()=>{if(HI<HIST.length-1)goHist(HI+1);else newLayout();};
 $('bPrev').onclick=()=>{if(HI>0)goHist(HI-1);};
 $('bPause').onclick=()=>setPause(!PAUSED);
-function setAuto(v){if(v===ST.auto)return;ST.auto=v;$('bAuto').classList.toggle('on',v);if(v){if(!ST.a||!ST.anim)newLayout();}else{ST.tok++;stopSay();}}
+function setAuto(v){if(v===ST.auto)return;ST.auto=v;if(!v&&ST.a)ST.a.hold=null;$('bAuto').classList.toggle('on',v);if(v){if(!ST.a||!ST.anim)newLayout();}else{ST.tok++;stopSay();}}
 $('bAuto').onclick=()=>setAuto(!ST.auto);
 /* 랜덤 / 연속: 연속은 공이 모두 멈춘 자리에서 같은 수구로 계속 친다 */
 let MODE='rand';try{if(localStorage.getItem('3q-text-mode')==='cont')MODE='cont';}catch(e){}
@@ -1226,10 +1226,11 @@ function badge(c,t){const b=$('badge');if(!t){b.style.opacity=0;return;}b.classN
 const LOG=[];function addLog(a,ok,t){LOG.unshift({n:ST.n,cue:a.cue,ok,t});$('log').innerHTML=LOG.slice(0,60).map(x=>`<li><span class="muted">#${x.n}</span><i style="background:${BALL_COL[x.cue]}"></i><span>${esc(x.t)}</span><span class="${x.ok?'ok':'no'}">${x.ok?'득점':'무득점'}</span></li>`).join('');}
 function drawT(){cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,cv.width,cv.height);table();const a=ST.a;if(!a){return;}SH=a.k;
  const rk=ST.mode==='fail'&&a.sh.fix?'fix':'rec';
- if(TRJ&&a.sh&&a.sh.rec){const tr=track(a,'rec');path(tr.path,COL.rec,[3,3.5]);}
+ if(TRJ&&a.sh&&a.sh.rec&&!a.hold){const tr=track(a,'rec');path(tr.path,COL.rec,[3,3.5]);}
  if(ST.anim){const A=ST.anim,tt=A.t(),col=COL[A.kind];const n=A.tr.path.length,F=A.tr;if(tt>0&&TRJ){const k=F.dur>0?Math.ceil(clamp(tt/F.dur,0,1)*(n-1))+1:n;path(F.path.slice(0,Math.max(2,k)),col,[]);}
   if(TRJ)for(const e of F.ev||[])if(e.t<=tt)point(e.x,e.y,col);A.pos().forEach((q,i)=>q&&ball(S2(q[0],q[1]),i));const c=A.cue();if(c)cue(a.pre[a.cue],c.ang,c.gap,c.alpha);
-  if(A.done()){ST.anim=null;A.res();}}
+  if(A.done()){ST.anim=null;if(ST.auto&&A.kind==='rec')a.hold={tr:A.tr,kind:A.kind};A.res();}}
+ else if(a.hold){const F=a.hold.tr,col=COL[a.hold.kind];if(TRJ){path(F.path,col,[]);for(const e of F.ev||[])point(e.x,e.y,col);}F.pos(F.dur).forEach((q,i)=>q&&ball(S2(q[0],q[1]),i));}
  else{if(TRJ&&a.sh&&a.sh[rk]){const tr=track(a,rk);for(const e of tr.ev||[])point(e.x,e.y,COL[rk]);}a.pre.forEach((q,i)=>ball(S2(q[0],q[1]),i));
   if(a.sh&&a.sh[rk]){aim(a.pre[a.cue],a.sh[rk].s[0]);cue(a.pre[a.cue],a.sh[rk].s[0],.05,.95);guideCard({...a,sh:{[rk]:a.sh[rk]}},rk,1);}}
 }
@@ -1248,7 +1249,7 @@ addEventListener('resize',()=>{if(LAND.on)sizeLand();resize();});
 const DRAG={b:-1,id:null,moved:false};let TAP=null;
 function toTable(e){const r=cv.getBoundingClientRect(),px=(e.clientX-r.left)*(cv.width/r.width),py=(e.clientY-r.top)*(cv.height/r.height);return [(px-OX)/SC,(py-OY)/SC,px,py];}
 cv.addEventListener('pointerdown',e=>{if(!ST.a){return;}const [x,y,px,py]=toTable(e);let best=-1,bd=1e9;ST.a.pre.forEach((q,i)=>{const c=S2(q[0],q[1]),d=Math.hypot(c.x-px,c.y-py);if(d<bd){bd=d;best=i;}});
- if(best<0||bd>BR()*2.6){TAP={x:e.clientX,y:e.clientY,t:performance.now(),id:e.pointerId};return;}e.preventDefault();DRAG.b=best;DRAG.id=e.pointerId;DRAG.moved=false;try{cv.setPointerCapture(e.pointerId);}catch(_){}ST.tok++;stopSay();ST.anim=null;ST.fail=null;ST.mode='drag';$('guide').classList.remove('f');});
+ if(best<0||bd>BR()*2.6){TAP={x:e.clientX,y:e.clientY,t:performance.now(),id:e.pointerId};return;}e.preventDefault();DRAG.b=best;DRAG.id=e.pointerId;DRAG.moved=false;try{cv.setPointerCapture(e.pointerId);}catch(_){}ST.tok++;stopSay();ST.anim=null;if(ST.a)ST.a.hold=null;ST.fail=null;ST.mode='drag';$('guide').classList.remove('f');});
 cv.addEventListener('pointermove',e=>{if(DRAG.b<0||e.pointerId!==DRAG.id)return;e.preventDefault();const R=P.R,a=ST.a;let [x,y]=toTable(e);x=clamp(x,R+.005,W-R-.005);y=clamp(y,R+.005,H-R-.005);
  for(let k=0;k<3;k++){if(k===DRAG.b)continue;const q=a.pre[k],d=Math.hypot(x-q[0],y-q[1]),m=2*R+.002;if(d<m){const ux=(x-q[0])/(d||1),uy=(y-q[1])/(d||1);x=q[0]+ux*m;y=q[1]+uy*m;}}
  x=clamp(x,R+.005,W-R-.005);y=clamp(y,R+.005,H-R-.005);if([0,1,2].some(k=>k!==DRAG.b&&Math.hypot(x-a.pre[k][0],y-a.pre[k][1])<2*R))return;
