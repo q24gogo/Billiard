@@ -1,5 +1,7 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0a1018"><title>당구 교과서 · 중계듣기</title><style>
+<title>당구 교과서 · 중계듣기</title>
+<link rel="manifest" href="member.webmanifest"><meta name="theme-color" content="#0a1018"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="중계듣기">
+<style>
 :root{--line:#22313f;--mint:#6ff0c2;--gold:#ffd166}
 *{box-sizing:border-box}body{font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#0a1018;color:#e9eef5;margin:0;padding:14px;max-width:560px;margin:auto}
 h1{font-size:20px;margin:4px 0 2px}.sub{color:#8ea0b2;font-size:13px;margin-bottom:10px}
@@ -28,6 +30,7 @@ details summary{cursor:pointer;color:#8ea0b2;font-size:13px}
  <div class="row"><label>앞 지연 <input type="range" id="lead" min="0" max="800" step="50" value="350"></label><span id="leadv" class="hint">350ms</span><span class="hint">(이어폰 첫 소리가 잘리면 늘리기)</span></div>
  <div class="row"><button id="tt">소리 테스트</button><label><input type="checkbox" id="keep" checked> 블루투스 유지음(화면 꺼짐·백그라운드에도 듣기)</label></div>
 </div>
+<button id="bInstall" hidden onclick="doInstall()" style="width:100%;margin:4px 0 10px">📲 홈 화면에 중계듣기 설치</button>
 <details><summary>연결 정보 · 기록</summary><div class="row"><label>채널 <input id="tbl" size="8" autocapitalize="characters" autocomplete="off"></label><span class="hint">TV가 여러 대일 때만 바꾸기 (기본 Q24)</span></div><div class="row"><label>브로커 <input id="url" size="30"></label></div><div id="log"></div></details>
 <script>
 /* 초소형 MQTT 3.1.1 over WebSocket (QoS0) — Q24 판정 PC 시험 코드와 같은 방식 */
@@ -94,4 +97,7 @@ $('go').onclick=async()=>{const t=$('tbl').value.trim().toUpperCase()||'Q24';$('
 $('tt').onclick=()=>{ac();wakeTone();speak('소리 테스트입니다. 들리면 정상입니다.');};
 document.addEventListener('visibilitychange',async()=>{if(!document.hidden){if(wake&&wake.released){try{wake=await navigator.wakeLock.request('screen');}catch(e){}}if(keepEl&&keepEl.paused&&$('keep').checked)keepEl.play().catch(()=>{});sendHello();}});
 log('1) 블루투스 이어폰 연결 → 2) 📡 중계듣기');
+</script><script>/* 설치(홈 화면 바로가기) */if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+let INSTALL_EV=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EV=e;const b=document.getElementById('bInstall');if(b)b.hidden=false;});addEventListener('appinstalled',()=>{const b=document.getElementById('bInstall');if(b)b.hidden=true;});
+function doInstall(){if(INSTALL_EV){INSTALL_EV.prompt();INSTALL_EV.userChoice.finally(()=>{INSTALL_EV=null;const b=document.getElementById('bInstall');if(b)b.hidden=true;});}else alert('브라우저 메뉴에서 "홈 화면에 추가"(아이폰: 공유 → 홈 화면에 추가)를 눌러 주세요.');}
 </script></body></html>

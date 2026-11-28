@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark"><title>3Q 당구 교과서</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0a1018"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="당구 교과서">
+
 <style>
 :root{--bg:#0a1018;--panel:#111a25;--line:#22313f;--text:#e9eef5;--muted:#8ea0b2;--mint:#6ff0c2;--gold:#ffd166;--red:#ff8a8a;--pink:#ff9ad5;--blue:#3b82f6}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
@@ -93,6 +95,7 @@ body.full #landS{display:none}body.full #landL{flex:1;align-items:center;padding
  <button id="bPhone" title="TV로 볼 때 회원이 각자 폰(블루투스 이어폰)으로 멘트 듣기">📡 중계 <b id="phN"></b></button>
  <button id="bLand" title="리뷰 화면과 같은 가로 보기(휴대폰을 가로로 돌리면 자동)">↔ 가로 보기</button>
  <button id="bFull">⛶ 전체 화면</button>
+ <button id="bInstall" hidden onclick="doInstall()" title="홈 화면·바탕화면에 바로가기로 설치">📲 앱 설치</button>
  <button id="bLearn" title="Lab 리뷰·코칭의 📘 당구 교과서로 보내기를 누르면 자동으로 들어옵니다. 또는 누적 학습 내보내기 파일: 테이블 물리 모델과 실제 득점 기록으로 현실감을 높입니다">📂 Lab 학습 데이터</button><input id="fLearn" type="file" accept=".json" hidden>
 </div>
 <div class="card" id="msg"><h2 id="msgH">시작하기</h2><div class="t" id="msgT">🎲 <b>새 배치</b>를 누르면 공 세 개가 랜덤으로 놓입니다. 공을 손가락(마우스)으로 끌어 옮겨도 됩니다. 배치가 정해지면 AI가 바로 <b>추천샷</b>(샷 기술 · 겨냥 두께 · 당점 · 세기 · 궤적 포인트)을 코칭하고 곧바로 쳐서 보여 줍니다. <b>Basic</b>은 가장 보편적인 표준 샷, <b>Advanced</b>는 고점자 샷과 포지션 플레이(득점 뒤 공이 모이는 자리까지 생각)입니다. <b>궤적</b> 체크를 끄면 길 없이 공만 움직여 스스로 읽어 볼 수 있어요. <b>⏯ 자동 진행</b>을 켜면 배치 → 코칭 → 득점 → 다음 배치가 계속 이어집니다.</div><div class="guide" id="guide" hidden></div><div class="alts" id="alts"></div></div>
@@ -1085,4 +1088,7 @@ setInterval(phCount,5000);
 if(PH.on)phConnect();
 window.TXT={ST,newLayout,analyse,shootRec,missWhy,route,setLv,setTrj,restOf,posQ,P,G,get LIB(){return LIB;},get LV(){return LV;}};
 </script>
-</body></html>
+<script>/* 설치(홈 화면 바로가기) */if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+let INSTALL_EV=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EV=e;const b=document.getElementById('bInstall');if(b)b.hidden=false;});addEventListener('appinstalled',()=>{const b=document.getElementById('bInstall');if(b)b.hidden=true;});
+function doInstall(){if(INSTALL_EV){INSTALL_EV.prompt();INSTALL_EV.userChoice.finally(()=>{INSTALL_EV=null;const b=document.getElementById('bInstall');if(b)b.hidden=true;});}else alert('브라우저 메뉴에서 "홈 화면에 추가"(아이폰: 공유 → 홈 화면에 추가)를 눌러 주세요.');}
+</script></body></html>
