@@ -909,7 +909,7 @@ async function search0(a,tok){const pos=posOf(a),m=G.model||{};
 function* humanSweep(pos,m){const out=[],D=2*P.R,sim=s=>P.simulate(pos,s,{maxC:5,dt:.014,model:m});
  for(const j of [1,2]){const dx=pos[j].x-pos[0].x,dy=pos[j].y-pos[0].y,dist=Math.hypot(dx,dy),base=Math.atan2(dy,dx);
   for(const th of [.06,.125,.25,.375,.5,.625,.75,.875])for(const side of [-1,1]){const e=(1-th)*D;if(e>=dist)continue;const ang=base+side*Math.asin(Math.min(.999,e/dist));
-   for(const tipX of [-.3,-.15,0,.15,.3])for(const tipY of [.3,.1,-.15])for(const speed of [2.2,2.8,3.4]){const r=sim({angle:ang,speed,tipX,tipY});if(r.success&&noKiss(r,pos))out.push(r);yield 0;}}}
+   for(const tipX of [-.45,-.3,-.15,0,.15,.3,.45])for(const tipY of [.4,.2,0,-.2])for(const speed of [2.2,2.8,3.4,3.9]){const r=sim({angle:ang,speed,tipX,tipY});if(r.success&&noKiss(r,pos))out.push(r);yield 0;}}}
  for(const j of [1,2])for(let rail=0;rail<4;rail++){const q=pos[j],R=P.R;let mx=q.x,my=q.y;if(rail===0)mx=2*R-q.x;else if(rail===1)mx=2*(W-R)-q.x;else if(rail===2)my=2*R-q.y;else my=2*(H-R)-q.y;
   const base=Math.atan2(my-pos[0].y,mx-pos[0].x);for(const off of [-.03,-.015,0,.015,.03])for(const tipX of [-.25,0,.25])for(const speed of [2.6,3.2]){const r=sim({angle:base+off,speed,tipX,tipY:.25});if(r.success&&noKiss(r,pos))out.push(r);yield 0;}}
  return out;}
@@ -925,7 +925,20 @@ function layoutInfo(pos){const D=2*P.R,R0=P.R,g=(a,b)=>Math.hypot(a.x-b.x,a.y-b.
 function pairInfo(pos){const D=2*P.R,g=Math.hypot(pos[1].x-pos[2].x,pos[1].y-pos[2].y)-D;return {gap:g,balls:g/D,adj:g<=2*D,strong:g<=1.5*D,big:g<=1.0*D};}
 function* pairBankSweep(pos,m){const out=[];for(let i=0;i<720;i++){const ang=i*Math.PI/360;for(const tipX of [-.25,0,.25])for(const speed of [2.4,3.0,3.6]){const r=P.simulate(pos,{angle:ang,speed,tipX,tipY:.2},{maxC:5,dt:.014,model:m});
    if(r.success&&noKiss(r,pos)){const ev=r.events,fb=ev.findIndex(e=>e.type==='ball');if(fb>=2)out.push(r);}yield 0;}}return out;}
-const CLS_PEN={basic:{side:0,back:0,front:0,thin:.25,bank:0,grand:.6,crossS:.8,crossL:.9,revS:1,revL:1,special:1.5,unknown:1.3},
+/* ---------- 뱅크샷(선쿠션) 유형: 1적구 전 쿠션 순서 코드(1=위, 2=오른쪽, 3=아래, 4=왼쪽) ----------
+ 회전형(123·321·214·234·412·432 …: 한 방향으로 이웃 쿠션을 감아 돎) → 1순위
+ 횡단형(131·313·242·424: 마주 보는 쿠션 왕복) → 2순위
+ 리버스(212·232·121·343·141 …: 이웃 쿠션으로 갔다 되돌아옴) → 3순위 */
+const RNUM=[4,2,1,3];
+function bankType(ev){ev=ev||[];const fb=ev.findIndex(e=>e.type==='ball'),cs=(fb<0?ev:ev.slice(0,fb)).filter(e=>e.type==='cushion').map(e=>RNUM[e.rail]);
+ const n=cs.length,code=cs.slice(0,3).join('');if(n<2)return {n,code,type:n?'single':'none'};
+ const st=[];for(let i=1;i<Math.min(n,3);i++){const d=((cs[i]-cs[i-1])%4+4)%4;st.push(d===1?1:d===3?-1:d===2?2:0);}
+ let type='other';if(st.every(d=>d===1)||st.every(d=>d===-1))type='rot';else if(st.every(d=>d===2))type='cross';else if(st.length>=2&&Math.abs(st[0])===1&&st[1]===-st[0])type='rev';else if(st.length===1)type=st[0]===2?'cross':'rot';
+ return {n,code,type};}
+const BANK_KO={rot:'외곽 회전형',cross:'횡단형',rev:'리버스(되돌리기형)',other:'변형'};
+const BANK_PEN={rot:0,cross:.6,other:1.0,rev:1.3};
+function shotName(x){const id=x&&x.cls&&x.cls.id,b=bankType(x&&x.events);if(b.n>=2){const t=b.n>=3?'쓰리뱅크':'투뱅크';return (b.type==='rev'?'리버스':BANK_KO[b.type])+' '+t;}return SHOT_KO[id]||'샷';}
+const CLS_PEN={basic:{side:0,back:0,front:0,thin:.5,bank:0,grand:.5,crossS:1.0,crossL:1.0,revS:1.0,revL:1.0,special:1.5,unknown:1.3},
  adv:{grand:-.4,revS:-.4,revL:-.4,crossS:-.3,crossL:-.3,bank:-.2,thin:0,side:.15,back:.15,front:.15,special:.6,unknown:.8}};
 function feat(x){const ev=x.events||[],fb=ev.findIndex(e=>e.type==='ball'),kick=(fb<0?ev:ev.slice(0,fb)).filter(e=>e.type==='cushion').length;
  return {kick,nC:x.rule&&x.rule.cushions!=null?x.rule.cushions:ev.filter(e=>e.type==='cushion').length,path:x.pathLength||0};}
@@ -935,6 +948,7 @@ function cheapH(x){const f=x.f||(x.f=feat(x)),s=x.shot,id=x.cls&&x.cls.id,adv=LV
   h+=f.kick>=3?(together?-.3:.4):.9;h+=pr.strong?-.2:0;}
  else h+=f.kick*(adv?1.0:1.8)+Math.max(0,f.kick-1)*(adv?.6:1.2);
  h+=(CLS_PEN[adv?'adv':'basic'][id]??1.2);
+ if(f.kick>=2){const bt=bankType(x.events);h+=(BANK_PEN[bt.type]??1)*(adv?.5:1);if(bt.type==='rot'&&x.eng==='rev')h+=.4;}
  h+=.10*f.path;
  h+=Math.max(0,Math.abs(s.tipX||0)-.2)*3+Math.max(0,-(s.tipY||0)-.05)*2.5;
  h+=Math.max(0,s.speed-3.3)*1.6+Math.max(0,2.1-s.speed)*.6;
@@ -977,7 +991,7 @@ async function analyse(){const a=ST.a;if(!a)return;const tok=++ST.tok;stopSay();
  if(!pick.length){setMsg('fail',`배치 ${ST.n}`,'이 배치는 득점 길을 찾지 못했어요. 🎲 새 배치를 눌러 주세요.',null);say('이 배치는 득점 길을 찾지 못했어요.');if(ST.auto){await sleep(1500);if(tok===ST.tok)newLayout();}return;}
  await playRoute(0,tok);}
 function selRoute(i,quiet){const a=ST.a,r=ST.routes[i];if(!r)return;ST.sel=i;ST.fail=null;ST.mode='coach';ST.anim=null;a.sh={rec:pack(r.shot,r.cls&&r.cls.id==='bank'?null:r.cut)};a.r=r;a._route=null;a.rest=r.rest||null;simCache.clear();a.k++;
- $('alts').innerHTML=ST.routes.length>1?'<span class="muted small">다른 길:</span>'+ST.routes.map((x,k)=>`<button data-k="${k}" class="${k===i?'on':''}">${esc(SHOT_KO[x.cls&&x.cls.id]||'샷')}${x.lib?' · 실제 기록':''}${x.altKiss?' · 키스 회피':''}${x.kiss!=null?' · 키스 '+Math.round(x.kiss*100)+'%':''}</button>`).join(''):'';
+ $('alts').innerHTML=ST.routes.length>1?'<span class="muted small">다른 길:</span>'+ST.routes.map((x,k)=>`<button data-k="${k}" class="${k===i?'on':''}">${esc(shotName(x))}${x.lib?' · 실제 기록':''}${x.altKiss?' · 키스 회피':''}${x.kiss!=null?' · 키스 '+Math.round(x.kiss*100)+'%':''}</button>`).join(''):'';
  coachMsg(quiet);}
 $('alts').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;const tok=++ST.tok;stopSay();playRoute(+b.dataset.k,tok);};
 /* ---------- Basic / Advanced 추천 ---------- */
@@ -994,7 +1008,23 @@ function englishType(a,shot){if(Math.abs(shot.tipX||0)<.08)return 'none';const p
  const out=sh=>{const r=P.simulate(pos,sh,{record:true,dt:.005,maxC:6,model:m}),ev=r.events||[],fb=ev.findIndex(e=>e.type==='ball');if(fb<0)return null;const c=ev.slice(fb+1).find(e=>e.type==='cushion');if(!c)return null;
   const F=r.frames||[],f=F.find(z=>z.t>=c.t+.2);if(!f)return null;const dx=f.p[0].x-c.x,dy=f.p[0].y-c.y,L=Math.hypot(dx,dy)||1,nrm=c.rail<2?Math.abs(dx):Math.abs(dy),tan=c.rail<2?Math.abs(dy):Math.abs(dx);return {rail:c.rail,ang:Math.atan2(tan,nrm)*180/Math.PI};};
  const A=out(shot),B=out({...shot,tipX:0});if(!A||!B||A.rail!==B.rail)return 'none';return A.ang>B.ang+3?'run':A.ang<B.ang-3?'rev':'none';}
-function humanH(x){return cheapH(x)+3.2*(1-(x.rob??.5))+1.5*(x.kiss||0)+(LV!=='adv'&&x.eng==='rev'?.4:0)-(LV==='adv'?1.5*(x.pq||0):0);}
+/* ---------- 구질별 표준 세팅 (사용자 코칭 가이드 2026-11-28) ----------
+ th: 권장 두께(비율), n: 권장 팁 수(당점 거리, 1팁=0.2), sx: 옆 회전 팁 범위, eng: 회전 방향, y: 상하 당점(up/mid/low), pw: 권장 세기 */
+const STD={back:{th:[.25,.5],n:[2,3],eng:'run',y:'up',pw:[3,3],fail:'1적구와의 2~3쿠션 교차 키스(쫑)'},
+ side:{th:[.375,.625],n:[1.5,2.5],eng:'run',y:'mid',pw:[3,3],fail:'과도한 타격으로 인한 밀림(길게 벗어남)'},
+ front:{th:[.375,.75],n:[2,3],eng:'run',y:'low',pw:[4,4],fail:'회전·힘 부족으로 3쿠션 이후 짧게 멈춤'},
+ thin:{th:[.125,.25],sx:[0,1],eng:'norun',y:'up',pw:[2,2],fail:'정회전 과다 사용으로 2쿠션에서 급꺾임'},
+ grand:{th:[.25,.5],n:[2.5,3],eng:'run',y:'up',pw:[4,5],fail:'스피드 부족으로 4쿠션 직전 힘 소진'},
+ revS:{th:[.375,.625],n:[2,3],eng:'rev',y:'low',pw:[3,3],fail:'강타로 인해 역회전이 쿠션에 안 먹힘'},
+ crossS:{th:[.25,.5],sx:[0,1],y:'mid',pw:[2,3],fail:'1쿠션 입사각 오차 및 과도한 스트로크'}};
+STD.revL=STD.revS;STD.crossL=STD.crossS;
+function stdPen(x){const S=STD[x.cls&&x.cls.id];if(!S||(x.f&&x.f.kick))return 0;const s=x.shot,th=x.cut,n=Math.hypot(s.tipX||0,s.tipY||0)/.2,sx=Math.abs(s.tipX||0)/.2,pw=powerN(s.speed);let p=0;
+ if(th!=null)p+=Math.max(0,S.th[0]-th,th-S.th[1])*8*.25;
+ if(S.n)p+=Math.max(0,S.n[0]-n,n-S.n[1])*.15;if(S.sx)p+=Math.max(0,S.sx[0]-sx,sx-S.sx[1])*.2;
+ if(S.eng&&x.eng){if(S.eng==='run'&&x.eng==='rev')p+=.35;else if(S.eng==='rev'&&x.eng==='run')p+=.35;else if(S.eng==='norun'&&x.eng==='run')p+=.35;}
+ const ty=s.tipY||0;if(S.y==='up'&&ty<.05)p+=.2;else if(S.y==='low'&&ty>.25)p+=.2;
+ p+=Math.max(0,S.pw[0]-pw,pw-S.pw[1])*.15;return Math.min(1.5,p);}
+function humanH(x){return cheapH(x)+stdPen(x)+3.2*(1-(x.rob??.5))+1.5*(x.kiss||0)+(LV!=='adv'&&x.eng==='rev'?.4:0)-(LV==='adv'?1.5*(x.pq||0):0);}
 function lvScore(x){return -humanH(x);}
 /* 키스 확률: 추천샷을 조금씩 흔들어(겨냥 ±0.6°, 세기 ±8%, 당점 ±0.03) 쳐 보고 득점 전에 공끼리 다시 부딪히는 비율 */
 function kissOf(a,shot){const pos=ordered(a),m=G.model||{};let n=0,k=0,c1=0,c2=0;
@@ -1035,11 +1065,13 @@ async function playRoute(i,tok){selRoute(i,true);await coachMsg(false);if(tok!==
 function route(a,kind){const s=a.sh[kind].s,r=P.simulate(ordered(a),{angle:s[0],speed:s[1],tipX:s[2],tipY:s[3]},{record:true,dt:.005,maxC:6,model:G.model||{}});
  const ev=r.events||[],fb=ev.find(e=>e.type==='ball');return {r,ev,fb,first:fb?toReal(a,fb.target):null,side:fb?fb.side:null,cut:r.cut,kick:ev[0]&&ev[0].type==='cushion',cus:ev.filter(e=>e.type==='cushion').slice(0,5).map(e=>({rail:e.rail,pt:railPt(e),t:e.t,x:e.x,y:e.y}))};}
 const cusTxt=c=>`${RS[c.rail]} ${c.pt.toFixed(1)}`;
-function rows(a,kind){const R=route(a,kind),sh=a.sh[kind],tn=SHOT_KO[a.r&&a.r.cls&&a.r.cls.id]||'샷';
+function rows(a,kind){const R=route(a,kind),sh=a.sh[kind],tn=shotName(a.r);
  const aimT=R.first!=null&&!R.kick?`${BALL_KO[R.first]} ${R.side==='L'?'왼쪽':'오른쪽'} ${frac8(R.cut)}`:(R.kick&&R.cus[0]?`쿠션 먼저 · ${RAIL[R.cus[0].rail]} ${R.cus[0].pt.toFixed(1)}`:'—');
  return [['샷 기술',kind==='rec'?tn:(ST.fail?ST.fail.label:'')],['겨냥 · 두께',aimT],['당점',sh.tip],['세기',sh.pwKo],['궤적 · 쿠션 포인트 (장쿠션 왼쪽부터 0~8 · 단쿠션 위부터 0~4)',R.cus.slice(0,4).map((c,i)=>`${'①②③④'[i]} ${cusTxt(c)}`).join('  →  ')||'—','wide']];}
-function coachSegs(a){const R=route(a,'rec'),sh=a.sh.rec,tn=SHOT_KO[a.r.cls&&a.r.cls.id]||'샷',p=[],q=t=>p.push({t});const ck=condKey();if(ck!=='std')p.push({t:`테이블이 ${COND[ck].ko}이에요. ${COND[ck].tip}.`,cond:true});
+function coachSegs(a){const R=route(a,'rec'),sh=a.sh.rec,tn=shotName(a.r),p=[],q=t=>p.push({t});const ck=condKey();if(ck!=='std')p.push({t:`테이블이 ${COND[ck].ko}이에요. ${COND[ck].tip}.`,cond:true});
  q(`${BALL_KO[a.cue]}${roOf(BALL_KO[a.cue])} 칩니다. 이 배치는 ${tn}${roOf(tn)} 치세요.`);
+ {const bt=bankType(R.ev);if(bt.n>=3){const hasRot=ST.routes.some(y=>y!==a.r&&bankType(y.events).n>=3&&bankType(y.events).type==='rot');
+   q(bt.type==='rot'?`가장 무난한 외곽 회전 길이에요. 쿠션 순서는 ${bt.code.split('').join('-')}번이에요.`:`외곽 회전 각이 좁아 ${bt.type==='cross'?'횡단':bt.type==='rev'?'리버스':'변형'} 쓰리뱅크로 우회하는 것이 유리합니다. 쿠션 순서는 ${bt.code.split('').join('-')}번이에요.`);}}
  {const pr=ST.pair,kk=R.ev.findIndex(e=>e.type==='ball');if(pr&&pr.adj&&kk>=2)q(`두 적구가 공 ${pr.balls<.75?'반 개':pr.balls<1.25?'한 개':pr.balls<1.75?'한 개 반':'두 개'} 간격으로 붙어 있어, 쿠션을 먼저 ${R.ev.slice(0,kk).filter(e=>e.type==='cushion').length}번 돌아 두 공을 한꺼번에 노려요.`);}
  if(R.kick&&R.cus[0])p.push({t:`${RAIL[R.cus[0].rail]} ${R.cus[0].pt.toFixed(1)} 포인트를 먼저 맞히고,`,hl:R.cus[0]});
  else if(R.first!=null)q(`${BALL_KO[R.first]} ${R.side==='L'?'왼쪽':'오른쪽'}을 ${frac8(R.cut)} 두께로 겨냥하고,`);
@@ -1048,7 +1080,8 @@ function coachSegs(a){const R=route(a,'rec'),sh=a.sh.rec,tn=SHOT_KO[a.r.cls&&a.r
   if(x.eng==='run')why.push('정회전이라 쿠션을 타고 길게 뻗어요');else if(x.eng==='rev')why.push('역회전이라 쿠션에서 안쪽으로 짧게 꺾여요');
   if((s0.tipY||0)>.25)why.push('상단 당점으로 쿠션 뒤에도 공이 살아나요');else if((s0.tipY||0)<-.05)why.push('하단 당점으로 수구의 직진을 죽여요');
   if(why.length<2){if(pw<=2)why.push('약하게 쳐서 회전이 쿠션에 깊게 먹어요');else if(pw>=4)why.push('강하게 쳐서 직진성으로 길게 가요');}
-  if(why.length)q(why.slice(0,2).join(', ')+'.');}
+  const rule=clsRule(a,R);if(rule)why.splice(1);
+  if(why.length)q(why.slice(0,2).join(', ')+'.');if(rule)q(rule);}
  {const ly=ST.lay,j=x0j(a),k=j===1?2:1,t=[];if(ly){if(j&&ly.dbl[j]&&!R.kick)t.push('수구와 1적구가 가까워 투터치 위험이 있어요. 큐를 짧게 끊어 치세요');
    if(j&&ly.frozen[j]&&!R.kick)t.push('1적구가 쿠션에 붙어 있어 얇게 깎기보다 두껍게 미는 느낌으로 치세요');
    if(k&&ly.corner[k])t.push('2적구가 코너에 있어 목표가 넓어요');
@@ -1060,13 +1093,24 @@ function coachSegs(a){const R=route(a,'rec'),sh=a.sh.rec,tn=SHOT_KO[a.r.cls&&a.r
  if(a.r.kiss!=null&&a.r.kiss>=.3)q('키스가 걱정되면 두께를 조금 더 두껍거나 얇게 바꾸거나, 하단 당점으로 수구 힘을 죽이세요.');
  if(a.r.lib)q('비슷한 배치의 실제 득점 기록을 바탕으로 한 길이에요.');
  return p;}
+/* 구질별 핵심 코칭 룰 한 문장 */
+function clsRule(a,R){const x=a.r,id=x.cls&&x.cls.id,s0=x.shot||{},th=x.cut||0,ck=condKey();if(R.kick)return '';
+ switch(id){
+  case 'back':return (x.kiss||0)>=.15?'뒤돌리기는 1적구와 키스가 나기 쉬워요. 키스가 걱정되면 두께를 1/8 줄이거나 하단 당점으로 1적구를 먼저 보내세요.':'짧게 빠지면 두께를 얇게 하고 상단 당점을, 길게 흐르면 두께를 두껍게 하고 회전을 줄이세요.';
+  case 'side':return '세게 치면 수구가 밀려 길게 들어가니 부드러운 팔로 스루로 치세요.';
+  case 'front':return th>=.6&&(s0.tipY||0)<.05?'각이 커서 두껍게 하단 당점으로 수구를 세워 단쿠션으로 보내세요.':'3쿠션 뒤 반대편까지 살아 가야 하니 끝까지 밀어 치세요.';
+  case 'thin':return '빗겨치기는 정회전을 많이 주면 2쿠션에서 꺾여 짧아져요. 두께 정확도가 가장 중요해요.';
+  case 'grand':return '대회전은 4·5쿠션까지 회전이 살아야 하니 상단 당점과 충분한 스피드가 필요해요.'+(ck==='slow'?' 느린 테이블이라 세기를 한 단계 더 높이세요.':'');
+  case 'revS':case 'revL':return '너무 세게 치면 역회전이 먹기 전에 튕겨 나가요. 큐를 부드럽게 뻗어 역회전이 쿠션에 깊숙이 잡히게 치세요.'+(ck==='fast'?' 빠른 테이블이라 역회전이 덜 먹으니 팁을 조금 더 주거나 스피드를 줄이세요.':'');
+  case 'crossS':case 'crossL':return '횡단은 회전보다 1쿠션 입사각과 두께가 왕복 간격을 정해요. 너무 세게 치면 각이 좁아져요.';}
+ return '';}
 function x0j(a){const f=(a.r&&a.r.events||[]).find(e=>e.type==='ball');return f?f.target:(a.r&&a.r.firstTarget)||null;}
 function coachSay(a){return coachSegs(a).map(x=>x.t).join(' ');}
 function restTxt(a){const o=[0,1,2].filter(b=>b!==a.cue).map(b=>a.rest[b]),mx=(o[0][0]+o[1][0])/2,my=(o[0][1]+o[1][1])/2,d=Math.hypot(o[0][0]-o[1][0],o[0][1]-o[1][1]);
  const px=(mx/(W/8)).toFixed(1),py=(my/(H/4)).toFixed(1),gap=d/(2*P.R);
  return `두 목적구가 가로 ${px}, 세로 ${py} 포인트 근처에 ${gap<6?'공 '+Math.max(1,Math.round(gap))+'개 간격으로 모이고':'약 '+(d*100/10|0)*10+'cm 떨어져 서고'} 수구는 가로 ${(a.rest[a.cue][0]/(W/8)).toFixed(1)}, 세로 ${(a.rest[a.cue][1]/(H/4)).toFixed(1)} 포인트에 서요`;}
 let HL=null;
-function coachMsg(quiet){const a=ST.a,tok=ST.tok,rw=rows(a,'rec');if(a.r.rob!=null)rw.splice(4,0,['실수 여유',Math.round(a.r.rob*100)+'% · '+(a.r.rob>=.7?'여유 있음':a.r.rob>=.4?'보통':'정확히 쳐야 함')]);if(a.r.kiss!=null)rw.splice(4,0,['키스 확률',Math.round(a.r.kiss*100)+'% · '+kissWord(a.r.kiss)+(a.r.kiss>=.1?(a.r.kissK==='cue'?' (수구↔1적구)':' (적구끼리)'):'')]);
+function coachMsg(quiet){const a=ST.a,tok=ST.tok,rw=rows(a,'rec');{const S=STD[a.r.cls&&a.r.cls.id];if(S&&!(a.r.f&&a.r.f.kick))rw.push(['표준 세팅 · 흔한 실패',`두께 ${Math.round(S.th[0]*8)}/8~${Math.round(S.th[1]*8)}/8 · 세기 ${S.pw[0]===S.pw[1]?S.pw[0]:S.pw[0]+'~'+S.pw[1]}단계 · 실패: ${S.fail}`,'wide']);}if(a.r.rob!=null)rw.splice(4,0,['실수 여유',Math.round(a.r.rob*100)+'% · '+(a.r.rob>=.7?'여유 있음':a.r.rob>=.4?'보통':'정확히 쳐야 함')]);if(a.r.kiss!=null)rw.splice(4,0,['키스 확률',Math.round(a.r.kiss*100)+'% · '+kissWord(a.r.kiss)+(a.r.kiss>=.1?(a.r.kissK==='cue'?' (수구↔1적구)':' (적구끼리)'):'')]);
  const sg=coachSegs(a);rw.unshift(['테이블 컨디션',condName()+' · '+COND[condKey()].tip]);setMsg('rec',`배치 ${ST.n} · 🎓 ${LV==='adv'?'Advanced':'Basic'} 추천샷 · 수구 ${BALL_KO[a.cue]}${a.r.lib?' · 실제 기록 기반':''}`,sg.map((x,k)=>`<span data-s="${k}" class="${x.hl?'pt':''}">${esc(x.t)}</span>`).join(' '),rw);badge('coach','🎓 '+(LV==='adv'?'Advanced':'Basic')+' · '+BALL_KO[a.cue]);
  if(quiet)return Promise.resolve();
  return (async()=>{for(let k=0;k<sg.length;k++){if(tok!==ST.tok)break;if(sg[k].cond&&CSAID===condKey()+'|'+CND)continue;HL=sg[k].hl||null;document.querySelectorAll('#msgT span[data-s]').forEach(e=>e.classList.toggle('on',+e.dataset.s===k));
@@ -1094,7 +1138,7 @@ function strike(a,kind,tok){const tr=(SH=a.k,track(a,kind)),ang=a.sh[kind].s[0],
 async function shootRec(tok){const a=ST.a;if(!a||!a.r)return;ST.fail=null;ST.mode='coach';$('guide').classList.remove('f');coachMsg(true);
  await sleep(200);badge('wait','AI가 칩니다 · '+BALL_KO[a.cue]);await strike(a,'rec',tok);if(tok!==ST.tok)return;
  const ok=!!a.r.success;if(ok){ST.ok++;kpis();}badge(ok?'ok':'no',ok?'득점 ✓':'무득점 ✗');
- const tn=SHOT_KO[a.r.cls&&a.r.cls.id]||'샷';if(!ok)await say('아깝게 빗나갔어요.');addLog(a,ok,'추천샷 · '+tn);}
+ const tn=shotName(a.r);if(!ok)await say('아깝게 빗나갔어요.');addLog(a,ok,'추천샷 · '+tn);}
 /* ---------- 흐름 ---------- */
 async function newLayout(){stopSay();ST.tok++;ST.n++;kpis();ST.a={pre:randLayout(),cue:CUE,k:ST.n*100};ST.anim=null;ST.fail=null;ST.mode='idle';$('guide').classList.remove('f');badge('',null);await analyse();}
 $('bNew').onclick=()=>newLayout();
